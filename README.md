@@ -1,4 +1,4 @@
-# openblock-extension
+# openblock-resource
 
 ![](https://img.shields.io/travis/com/openblockcc/openblock-resource) ![](https://img.shields.io/github/license/openblockcc/openblock-resource)
 
@@ -10,3 +10,5 @@ Provide a local resource server for openblock.
 npm install
 npm start
 ```
+
+To test update funciton, run `npm test`.
