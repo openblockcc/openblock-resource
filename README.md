@@ -11,7 +11,7 @@ npm install
 npm start
 ```
 
-To test update funciton, run:
+To test upgrade funciton, run:
 
 ```bash
 npm test

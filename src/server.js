@@ -199,7 +199,7 @@ class OpenBlockResourceServer extends Emitter{
         });
     }
 
-    update () {
+    upgrade () {
         rimraf.sync(this._userDataPath);
         copydir.sync(this._updaterPath, this._userDataPath, {utimes: true, mode: true});
         rimraf.sync(this._updaterPath);
