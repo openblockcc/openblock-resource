@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const copydir = require('copy-dir');
 const releaseDownloader = require('@fohlen/github-release-downloader');
-const ghdownload = require('github-download');
+const ghdownload = require('openblock-github-dl');
 const rimraf = require('rimraf');
 const compareVersions = require('compare-versions');
 
@@ -57,7 +57,7 @@ class OpenBlockResourceServer extends Emitter{
 
         // path to store initial resources.
         if (resourcePath) {
-            this._resourcePath = path.join(resourcePath);
+            this._resourcePath = path.join(resourcePath, this._type);
         } else {
             this._resourcePath = path.join(__dirname, '../', this._type);
         }
@@ -73,7 +73,7 @@ class OpenBlockResourceServer extends Emitter{
 
     checkFirstRun () {
         if (!fs.existsSync(this._userDataPath)) {
-            console.log(`copy ${this._type} file to ${this._userDataPath}`);
+            console.log(`copy ${this._resourcePath} to ${this._userDataPath}`);
             return true;
         }
         return false;
@@ -118,6 +118,7 @@ class OpenBlockResourceServer extends Emitter{
                     // Get the latest version for remote server
                     releaseDownloader.getReleaseList(`${this._config.user}/${this._config.repo}`)
                         .then(release => {
+                            this._releaseDescribe = release[0].body;
                             const latestVersion = release[0].tag_name;
                             if (this._config.version) {
                                 const curentVersion = this._config.version;
@@ -154,7 +155,11 @@ class OpenBlockResourceServer extends Emitter{
                         const updaterResourceVersion = require(updaterResourceConfig).updaterVersion;
                         // the new version has been downloaded
                         if (updaterResourceVersion === version) {
-                            return resolve('skip download, the latest version has been downloaded');
+                            return resolve({
+                                log: 'skip download, the latest version has been downloaded',
+                                message: this._releaseDescribe,
+                                version: version
+                            });
                         }
                     }
 
@@ -162,6 +167,9 @@ class OpenBlockResourceServer extends Emitter{
                     if (!fs.existsSync(path.join(this._updaterPath, '../'))){
                         fs.mkdirSync(path.join(this._updaterPath, '../'), {recursive: true});
                     }
+
+                    // clear temporary files that have been saved due to update failure
+                    rimraf.sync(path.join(this._updaterPath, '../downloading*'));
 
                     // delet the old data and download new
                     rimraf.sync(this._updaterPath);
@@ -177,7 +185,11 @@ class OpenBlockResourceServer extends Emitter{
                             delete config.version;
                             config.updaterVersion = version;
                             fs.writeFileSync(updaterResourceConfig, JSON.stringify(config));
-                            return resolve(`${this._type} download finish`);
+                            return resolve({
+                                log: `${this._type} download finish`,
+                                message: this._releaseDescribe,
+                                version: version
+                            });
                         });
                 } else {
                     return reject('Already up to date.');

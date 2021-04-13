@@ -16,10 +16,10 @@ class OpenBlockDevice extends OpenBlockResourceServer{
     /**
      * Construct a OpenBlock device server object.
      * @param {string} userDataPath - the path of user data.
-     * @param {string} devicesPath - the path of initial devices data.
+     * @param {string} initialResourcePath - the path of initial resource data.
      */
-    constructor (userDataPath, devicesPath) {
-        super(userDataPath, devicesPath, 'devices');
+    constructor (userDataPath, initialResourcePath) {
+        super(userDataPath, initialResourcePath, 'devices');
 
         this._socketPort = DEFAULT_PORT;
     }

@@ -4,7 +4,7 @@ const resourceServer = new OpenblockResourceServer();
 
 // Test the update funciton.
 resourceServer.extension.checkAndDownloadUpdate().then(info => {
-    console.log('info =', info);
+    console.log('extension log =', info.log);
     resourceServer.extension.update();
 })
     .catch(err => {
@@ -12,7 +12,7 @@ resourceServer.extension.checkAndDownloadUpdate().then(info => {
     });
 
 resourceServer.device.checkAndDownloadUpdate().then(info => {
-    console.log('info =', info);
+    console.log('device log =', info.log);
     resourceServer.device.update();
 })
     .catch(err => {

@@ -1,5 +1,5 @@
 const releaseDownloader = require('@fohlen/github-release-downloader');
-const ghdownload = require('github-download');
+const ghdownload = require('openblock-github-dl');
 const rimraf = require('rimraf');
 const path = require('path');
 const fs = require('fs');
