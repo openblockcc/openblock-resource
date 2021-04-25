@@ -97,11 +97,14 @@ class OpenblockResourceServer {
             progress(request(this._config.download + this._latestVersion))
                 .on('progress', state => {
                     if (callback) {
-                        callback(state);
+                        callback({phase: 'downloading', speed: state.speed, transferred: state.size.transferred});
                     }
                 })
                 .on('end', () => {
+                    callback({phase: 'extracting'});
                     extract(zipPath, {dir: extractPath}).then(() => {
+                        callback({phase: 'recovering'});
+
                         rimraf.sync(zipPath);
                         rimraf.sync(this._userDataPath);
 
@@ -114,8 +117,6 @@ class OpenblockResourceServer {
                         const config = Object.assign({}, this._config);
                         config.version = this._latestVersion;
                         fs.writeFileSync(this._configPath, JSON.stringify(config));
-
-                        console.log(`${this._type} update finish`);
                         return resolve();
                     })
                         .catch(err => reject(`Error while extract ${zipPath} to ${this._updaterPath}: ${err}`));

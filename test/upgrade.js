@@ -7,8 +7,9 @@ resourceServer.checkUpdate().then(updateInfo => {
     if (updateInfo){
         console.log('updateInfo:', updateInfo);
         resourceServer.upgrade(downloadInfo => {
-            console.log(`speed: ${(downloadInfo.speed / (1024 * 1024)).toFixed(2)} MB/s, ` +
-        `transferred: ${(downloadInfo.size.transferred / (1024 * 1024)).toFixed(2)} MB`);
+            console.log(`phase: ${downloadInfo.phase}, ` +
+                `speed: ${(downloadInfo.speed / (1024 * 1024)).toFixed(2)} MB/s, ` +
+                `transferred: ${(downloadInfo.transferred / (1024 * 1024)).toFixed(2)} MB`);
         })
             .then(() => {
                 console.log('upgrade finish');
