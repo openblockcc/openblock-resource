@@ -3,33 +3,21 @@ const ghdownload = require('openblock-github-dl');
 const rimraf = require('rimraf');
 const path = require('path');
 const fs = require('fs');
-const compareVersions = require('compare-versions');
 
-const configPath = path.join(__dirname, '../extensions/config.json');
+const configPath = path.join(__dirname, '../external-resources/config.json');
 
-let config = {};
-
-if (fs.existsSync(configPath)) {
-    // eslint-disable-next-line global-require
-    config = require(configPath);
-} else {
-    config.user = 'openblockcc';
-    config.repo = 'extension';
-    config.version = 'v0.0.1';
-}
+const config = {};
+config.user = 'openblockcc';
+config.repo = 'resource';
 
 releaseDownloader.getReleaseList(`${config.user}/${config.repo}`)
     .then(release => {
         const latestVersion = release[0].tag_name;
-        const curentVersion = config.version;
 
-        if (compareVersions.compare(latestVersion, curentVersion, '>')) {
-            console.log(`new extension version detected: ${latestVersion}`);
-
-            rimraf.sync(path.join(__dirname, '../extensions'));
+        rimraf(path.join(__dirname, '../external-resources'), () => {
 
             ghdownload({user: config.user, repo: config.repo, ref: latestVersion},
-                path.join(__dirname, '../extensions'))
+                path.join(__dirname, '../external-resources'))
                 .on('error', err => {
                     console.error(`error while downloading ${config.user}/${config.repo} ${latestVersion}:`, err);
                 })
@@ -39,10 +27,11 @@ releaseDownloader.getReleaseList(`${config.user}/${config.repo}`)
                 .on('end', () => {
                     console.log('finish');
 
-                    config.version = latestVersion;
-                    fs.writeFileSync(configPath, JSON.stringify(config));
+                    const resourceConfig = require(configPath); // eslint-disable-line global-require
+                    resourceConfig.version = latestVersion;
+                    fs.writeFileSync(configPath, JSON.stringify(resourceConfig));
                 });
-        }
+        });
     })
     .catch(err => {
         console.log(err);

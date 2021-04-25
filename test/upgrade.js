@@ -4,16 +4,17 @@ const resourceServer = new OpenblockResourceServer();
 
 // Test the upgrade funciton.
 resourceServer.checkUpdate().then(updateInfo => {
-    if (updateInfo.extension || updateInfo.device){
+    if (updateInfo){
+        console.log('updateInfo:', updateInfo);
         resourceServer.upgrade(downloadInfo => {
             console.log(`speed: ${(downloadInfo.speed / (1024 * 1024)).toFixed(2)} MB/s, ` +
-        `transferred: ${(downloadInfo.transferred / (1024 * 1024)).toFixed(2)} MB/s`);
+        `transferred: ${(downloadInfo.size.transferred / (1024 * 1024)).toFixed(2)} MB`);
         })
             .then(() => {
                 console.log('upgrade finish');
             });
     } else {
-        console.log('extension and device are the latest version');
+        console.log('External-resources are the latest version');
     }
 })
     .catch(err => {

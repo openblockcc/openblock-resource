@@ -5,7 +5,7 @@ const fs = require('fs');
 const copydir = require('copy-dir');
 
 const buildPath = path.join(__dirname, '../dist/extensions');
-const translations = require(path.join(__dirname, '../extensions/locales.js'));
+const translations = require(path.join(__dirname, '../external-resources/extensions/locales.js'));
 
 const EXTENSION_CLASS = ['sheild', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
 const DEVICE_TYPE = ['arduino', 'microbit'];
@@ -40,7 +40,7 @@ Object.entries(translations).forEach(locale => {
 
     DEVICE_TYPE.forEach(deviceType => {
         EXTENSION_CLASS.forEach(extClass => {
-            const extPath = path.join(__dirname, '../extensions', deviceType, extClass);
+            const extPath = path.join(__dirname, '../external-resources/extensions', deviceType, extClass);
             if (fs.existsSync(extPath)) {
                 const data = requireAll({dirname: extPath, filter: /index.js$/, recursive: true});
                 Object.entries(data).forEach(ext => {
@@ -69,7 +69,7 @@ Object.entries(translations).forEach(locale => {
         fs.mkdirSync(buildPath, {recursive: true});
     }
 
-    copydir.sync(path.join(__dirname, '../extensions'), buildPath, {
+    copydir.sync(path.join(__dirname, '../external-resources/extensions'), buildPath, {
         utimes: true,
         mode: true,
         filter: (stat, filepath, filename) => {

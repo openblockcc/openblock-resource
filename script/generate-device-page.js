@@ -5,7 +5,7 @@ const fs = require('fs');
 const copydir = require('copy-dir');
 
 const buildPath = path.join(__dirname, '../dist/devices');
-const translations = require(path.join(__dirname, '../devices/locales.js'));
+const translations = require(path.join(__dirname, '../external-resources/devices/locales.js'));
 
 const parseArgs = () => {
     const scriptArgs = process.argv.slice(2); // remove `node` and `this-script.js`
@@ -35,7 +35,7 @@ Object.entries(translations).forEach(locale => {
     });
 
     const devices = requireAll({
-        dirname: path.join(__dirname, '../devices'),
+        dirname: path.join(__dirname, '../external-resources/devices'),
         filter: /index.js$/,
         recursive: true
     });
@@ -43,7 +43,7 @@ Object.entries(translations).forEach(locale => {
     const devicesThumbnailData = [];
 
     // eslint-disable-next-line global-require
-    const deviceList = require(path.join(__dirname, '../devices/device.js'));
+    const deviceList = require(path.join(__dirname, '../external-resources/devices/device.js'));
     deviceList.forEach(listItem => {
         let matched = false;
         Object.entries(devices).forEach(catlog => {
@@ -76,7 +76,7 @@ Object.entries(translations).forEach(locale => {
         fs.mkdirSync(buildPath, {recursive: true});
     }
 
-    copydir.sync(path.join(__dirname, '../devices'), buildPath, {
+    copydir.sync(path.join(__dirname, '../external-resources/devices'), buildPath, {
         utimes: true,
         mode: true,
         filter: (stat, filepath) => {

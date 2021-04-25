@@ -29,10 +29,9 @@ class OpenBlockExtension extends OpenBlockResourceServer{
     /**
      * Construct a OpenBlock extension server object.
      * @param {string} userDataPath - the path of user data.
-     * @param {string} initialResourcePath - the path of initial resource data.
      */
-    constructor (userDataPath, initialResourcePath) {
-        super(userDataPath, initialResourcePath, 'extensions');
+    constructor (userDataPath) {
+        super(userDataPath, 'extensions');
 
         this._socketPort = DEFAULT_PORT;
     }
