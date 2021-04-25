@@ -5,10 +5,12 @@ const Emitter = require('events');
 const path = require('path');
 const fs = require('fs');
 const copydir = require('copy-dir');
-const releaseDownloader = require('@fohlen/github-release-downloader');
-const ghdownload = require('openblock-github-dl');
+const fetch = require('node-fetch');
 const rimraf = require('rimraf');
 const compareVersions = require('compare-versions');
+const request = require('request');
+const progress = require('request-progress');
+const extract = require('extract-zip');
 
 /**
  * Configuration the default user data path.
@@ -52,7 +54,7 @@ class OpenBlockResourceServer extends Emitter{
             this._userDataPath = path.join(DEFAULT_USER_DATA_PATH, type);
         }
 
-        this._updaterPath = path.join(this._userDataPath, '../updater', this._type);
+        this._updaterPath = path.join(this._userDataPath, '../updater');
         this._configPath = path.join(this._userDataPath, 'config.json');
 
         // path to store initial resources.
@@ -114,26 +116,27 @@ class OpenBlockResourceServer extends Emitter{
 
                 this._config = require(this._configPath); // eslint-disable-line global-require
 
-                if (this._config.user && this._config.repo) {
+                if (this._config.release) {
                     // Get the latest version for remote server
-                    releaseDownloader.getReleaseList(`${this._config.user}/${this._config.repo}`)
-                        .then(release => {
-                            this._releaseDescribe = release[0].body;
-                            const latestVersion = release[0].tag_name;
+                    fetch(this._config.release)
+                        .then(response => response.json())
+                        .then(info => {
+                            const latestVersion = info.tag_name;
+
                             if (this._config.version) {
                                 const curentVersion = this._config.version;
                                 if (compareVersions.compare(latestVersion, curentVersion, '>')) {
-                                    return resolve(latestVersion);
+                                    this._latestVersion = latestVersion;
+                                    return resolve({version: latestVersion, describe: info.body});
                                 }
                             } else {
                                 return reject(`Cannot find version tag in: ${this._configPath}`);
                             }
                             return resolve();
                         })
-                        .catch(err => reject(`Error while getting realse list of ` +
-                        `${this._config.user}/${this._config.repo}: ${err}`));
+                        .catch(err => reject(`Error while latest release from: ${this._config.release}: ${err}`));
                 } else {
-                    return reject(`Cannot find valid git repo configuration in: ${this._configPath}`);
+                    return reject(`Cannot find valid release url in: ${this._configPath}`);
                 }
             } else {
                 return reject(`Cannot find file: ${this._configPath}`);
@@ -141,73 +144,49 @@ class OpenBlockResourceServer extends Emitter{
         });
     }
 
-    checkAndDownloadUpdate () {
+    upgrade (callback = null) {
         return new Promise((resolve, reject) => {
-            this.checkShouldUpdate().then(version => {
-                if (version) {
-                    console.log(`new ${this._type} version detected: ${version}`);
-                    this._updaterVersion = version;
+            if (!this._latestVersion) {
+                return resolve();
+            }
 
-                    const updaterResourceConfig = path.join(this._updaterPath, 'config.json');
-                    if (fs.existsSync(updaterResourceConfig)) {
-                        // read the resource version in updater
-                        // eslint-disable-next-line global-require
-                        const updaterResourceVersion = require(updaterResourceConfig).updaterVersion;
-                        // the new version has been downloaded
-                        if (updaterResourceVersion === version) {
-                            return resolve({
-                                log: 'skip download, the latest version has been downloaded',
-                                message: this._releaseDescribe,
-                                version: version
-                            });
-                        }
+            // if there is no updater dir, create it
+            if (!fs.existsSync(path.join(this._updaterPath))){
+                fs.mkdirSync(path.join(this._updaterPath), {recursive: true});
+            }
+
+            const zipPath = path.join(this._updaterPath, `${this._type}.zip`);
+
+            progress(request(this._config.download + this._latestVersion))
+                .on('progress', state => {
+                    if (callback) {
+                        callback(state);
                     }
+                })
+                .on('end', () => {
+                    extract(zipPath, {dir: this._updaterPath}).then(() => {
+                        rimraf.sync(zipPath);
+                        rimraf.sync(this._userDataPath);
 
-                    // if there is no updater dir, create it
-                    if (!fs.existsSync(path.join(this._updaterPath, '../'))){
-                        fs.mkdirSync(path.join(this._updaterPath, '../'), {recursive: true});
-                    }
+                        const extractDir = path.join(this._updaterPath,
+                            `${this._type.slice(0, -1)}-${this._latestVersion.slice(1)}`);
+                        copydir.sync(extractDir, this._userDataPath, {utimes: true, mode: true});
+                        rimraf.sync(extractDir);
 
-                    // clear temporary files that have been saved due to update failure
-                    rimraf.sync(path.join(this._updaterPath, '../downloading*'));
+                        // write the new version tag to config.json to finitsh upload
+                        const config = Object.assign({}, this._config);
+                        config.version = this._latestVersion;
+                        fs.writeFileSync(this._configPath, JSON.stringify(config));
 
-                    // delet the old data and download new
-                    rimraf.sync(this._updaterPath);
-                    // download and unzip the new resource
-                    ghdownload({user: this._config.user, repo: this._config.repo, ref: version}, this._updaterPath)
-                        .on('error', err => reject(`Error while downloading ${this._config.user}/` +
-                            `${this._config.repo} ${this._latestVersion}: ${err}`))
-                        .on('zip', zipUrl => {
-                            console.log(`${zipUrl} downloading...`);
-                        })
-                        .on('end', () => {
-                            const config = Object.assign({}, this._config);
-                            delete config.version;
-                            config.updaterVersion = version;
-                            fs.writeFileSync(updaterResourceConfig, JSON.stringify(config));
-                            return resolve({
-                                log: `${this._type} download finish`,
-                                message: this._releaseDescribe,
-                                version: version
-                            });
-                        });
-                } else {
-                    return reject('Already up to date.');
-                }
-            })
-                .catch(err => reject(`Error while checking the update: ${err}`));
+                        console.log(`${this._type} update finish`);
+                        return resolve();
+                    })
+                        .catch(err => reject(`Error while extract ${zipPath} to ${this._updaterPath}: ${err}`));
+                })
+                .on('error',
+                    err => reject(`Error while downloading ${this._config.download}${this._latestVersion}: ${err}`))
+                .pipe(fs.createWriteStream(zipPath));
         });
-    }
-
-    upgrade () {
-        rimraf.sync(this._userDataPath);
-        copydir.sync(this._updaterPath, this._userDataPath, {utimes: true, mode: true});
-        rimraf.sync(this._updaterPath);
-        // write the new version tag to config.json to finitsh upload
-        const config = Object.assign({}, this._config);
-        config.version = this._updaterVersion;
-        fs.writeFileSync(this._configPath, JSON.stringify(config));
-        console.log(`${this._type} update finish`);
     }
 
     // will be overwrite
