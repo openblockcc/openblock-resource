@@ -103,7 +103,7 @@ class OpenblockResourceServer {
                 .on('end', () => {
                     callback({phase: 'extracting'});
                     extract(zipPath, {dir: extractPath}).then(() => {
-                        callback({phase: 'recovering'});
+                        callback({phase: 'covering'});
 
                         rimraf.sync(zipPath);
                         rimraf.sync(this._userDataPath);
