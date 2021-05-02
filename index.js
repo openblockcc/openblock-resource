@@ -1,14 +1,12 @@
-const OpenBlockExtension = require('./src/extension-server');
-const OpenBlockDevice = require('./src/device-server');
 const fs = require('fs');
 const copydir = require('copy-dir');
 const path = require('path');
-const fetch = require('node-fetch');
 const compareVersions = require('compare-versions');
 const rimraf = require('rimraf');
-const request = require('request');
-const progress = require('request-progress');
-const extract = require('extract-zip');
+
+const OpenBlockExtension = require('./src/extension-server');
+const OpenBlockDevice = require('./src/device-server');
+const GIT = require('./src/git');
 
 /**
  * Configuration the default user data path.
@@ -47,7 +45,7 @@ class OpenblockResourceServer {
             if (!fs.existsSync(this._userDataPath)) {
                 fs.mkdirSync(this._userDataPath, {recursive: true});
             }
-            copydir.sync(this._resourcesPath, this._userDataPath, {utimes: true, mode: true});
+            copydir.sync(this._resourcesPath, this._userDataPath);
         }
     }
 
@@ -57,27 +55,33 @@ class OpenblockResourceServer {
 
                 this._config = require(this._configPath); // eslint-disable-line global-require
 
-                if (this._config.release) {
-                    // Get the latest version for remote server
-                    fetch(this._config.release)
-                        .then(response => response.json())
-                        .then(info => {
-                            const latestVersion = info.tag_name;
+                if (this._config.repository) {
+                    if (this.git) {
+                        delete this.git;
+                    }
+                    this.device.setLocale().then(() => {
+                        this.git = new GIT(this._config.repository, this.device._locale);
 
-                            if (this._config.version) {
-                                const curentVersion = this._config.version;
-                                if (compareVersions.compare(latestVersion, curentVersion, '>')) {
-                                    this._latestVersion = latestVersion;
-                                    return resolve({version: latestVersion, describe: info.body});
+                        this.git.getLatestReleases()
+                            .then(info => {
+                                const latestVersion = info.version;
+
+                                if (this._config.version) {
+                                    const curentVersion = this._config.version;
+                                    if (compareVersions.compare(latestVersion, curentVersion, '>')) {
+                                        this._latestVersion = latestVersion;
+                                        return resolve({version: latestVersion, describe: info.body});
+                                    }
+                                } else {
+                                    return reject(`Cannot find version tag in: ${this._configPath}`);
                                 }
-                            } else {
-                                return reject(`Cannot find version tag in: ${this._configPath}`);
-                            }
-                            return resolve();
-                        })
-                        .catch(err => reject(`Error while latest release from: ${this._config.release}: ${err}`));
+                                return resolve();
+                            })
+                            .catch(err => reject(err));
+                    });
+
                 } else {
-                    return reject(`Cannot find valid release url in: ${this._configPath}`);
+                    return reject(`Cannot find valid repository in: ${this._configPath}`);
                 }
             } else {
                 return reject(`Cannot find file: ${this._configPath}`);
@@ -91,39 +95,44 @@ class OpenblockResourceServer {
                 return resolve();
             }
 
-            const zipPath = path.join(this._userDataPath, '../download-external-resources.zip');
-            const extractPath = path.join(this._userDataPath, '../');
+            if (callback) {
+                callback({phase: 'downloading'});
+            }
+            const downloadPath = path.join(this._userDataPath, '../tmp/download-external-resources');
 
-            progress(request(this._config.download + this._latestVersion))
-                .on('progress', state => {
+            if (fs.existsSync(downloadPath)) {
+                rimraf.sync(downloadPath);
+            } else {
+                fs.mkdirSync(downloadPath, {recursive: true});
+            }
+
+            this.git.cloneLatestReleases(downloadPath)
+                .then(() => {
                     if (callback) {
-                        callback({phase: 'downloading', speed: state.speed, transferred: state.size.transferred});
-                    }
-                })
-                .on('end', () => {
-                    callback({phase: 'extracting'});
-                    extract(zipPath, {dir: extractPath}).then(() => {
                         callback({phase: 'covering'});
 
-                        rimraf.sync(zipPath);
+                        // rm the old data
                         rimraf.sync(this._userDataPath);
 
-                        const extractDir = path.join(extractPath,
-                            `external-resources-${this._latestVersion.slice(1)}`);
-                        copydir.sync(extractDir, this._userDataPath, {utimes: true, mode: true});
-                        rimraf.sync(extractDir);
+                        copydir.sync(downloadPath, this._userDataPath,
+                            {
+                                filter: (stat, filepath, filename) => {
+                                    // do not want copy .git directories
+                                    if (stat === 'directory' && filename === '.git') {
+                                        return false;
+                                    }
+                                    return true; // remind to return a true value when file check passed.
+                                }
+                            });
 
                         // write the new version tag to config.json to finitsh upload
                         const config = Object.assign({}, this._config);
                         config.version = this._latestVersion;
                         fs.writeFileSync(this._configPath, JSON.stringify(config));
                         return resolve();
-                    })
-                        .catch(err => reject(`Error while extract ${zipPath} to ${this._updaterPath}: ${err}`));
+                    }
                 })
-                .on('error',
-                    err => reject(`Error while downloading ${this._config.download}${this._latestVersion}: ${err}`))
-                .pipe(fs.createWriteStream(zipPath));
+                .catch(err => reject(err));
         });
     }
 

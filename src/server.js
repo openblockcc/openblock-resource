@@ -49,7 +49,6 @@ class OpenBlockResourceServer extends Emitter{
                 } else {
                     this._locale = locale;
                 }
-                console.log('set locale:', this._locale);
 
                 this._formatMessage.setup({
                     locale: this._locale,
