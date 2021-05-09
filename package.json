@@ -13,8 +13,7 @@
     "build": "rimraf dist && npm run build:extension && npm run build:device",
     "deploy": "npm run fetch && npm run build",
     "lint": "eslint ./",
-    "test": "node test/upgrade.js",
-    "test2": "node test/test.js"
+    "test": "node test/upgrade.js"
   },
   "author": "ArthurZheng",
   "license": "MIT",
