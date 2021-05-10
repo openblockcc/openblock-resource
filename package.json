@@ -4,9 +4,8 @@
   "description": "External resources for OpenBlock projects",
   "main": "start.js",
   "scripts": {
-    "postinstall": "npm run fetch",
-    "start": "rimraf ../.openblockData/external-resources && node ./test/start.js",
     "fetch": "node ./script/download.js",
+    "start": "rimraf ../.openblockData/external-resources && node ./test/start.js",
     "clean": "rimraf external-resources dist downloading-* ../.openblockData/external-resources",
     "build:extension": "node ./script/generate-extension-page.js --url=https://openblockcc.github.io/openblock-extension/",
     "build:device": "node ./script/generate-device-page.js --url=https://openblockcc.github.io/openblock-device/",
