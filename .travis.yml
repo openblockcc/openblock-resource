@@ -10,6 +10,8 @@ addons:
 cache:
   directories:
   - node_modules
+install:
+- npm run fetch
 before_deploy:
 - VPKG=$($(npm bin)/json -f package.json version)
 - export RELEASE_VERSION=${VPKG}-prerelease.${RELEASE_TIMESTAMP}
