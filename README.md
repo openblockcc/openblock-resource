@@ -8,6 +8,7 @@ Provide a local resource server for openblock.
 
 ```bash
 npm install
+npm run fetch
 npm start
 ```
 
