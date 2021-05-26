@@ -64,18 +64,22 @@ class OpenblockResourceServer {
 
                         this.git.getLatestReleases()
                             .then(info => {
-                                const latestVersion = info.version;
+                                if (info.version) {
+                                    console.log('info=', info);
+                                    const latestVersion = info.version;
 
-                                if (this._config.version) {
-                                    const curentVersion = this._config.version;
-                                    if (compareVersions.compare(latestVersion, curentVersion, '>')) {
-                                        this._latestVersion = latestVersion;
-                                        return resolve({version: latestVersion, describe: info.body});
+                                    if (this._config.version) {
+                                        const curentVersion = this._config.version;
+                                        if (compareVersions.compare(latestVersion, curentVersion, '>')) {
+                                            this._latestVersion = latestVersion;
+                                            return resolve({version: latestVersion, describe: info.body});
+                                        }
+                                    } else {
+                                        return reject(`Cannot find version tag in: ${this._configPath}`);
                                     }
-                                } else {
-                                    return reject(`Cannot find version tag in: ${this._configPath}`);
+                                    return resolve();
                                 }
-                                return resolve();
+                                return reject(`Cannot get valid releases from: ${this._config.repository}`);
                             })
                             .catch(err => reject(err));
                     });
