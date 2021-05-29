@@ -141,7 +141,16 @@ class OpenblockResourceServer {
     }
 
     listen (deviceServerPort = null, extensionServerPort = null) {
+        this.device.on('error', e => {
+            console.warn(e);
+        });
+
         this.device.listen(deviceServerPort);
+
+        this.extension.on('error', e => {
+            console.warn(e);
+        });
+
         this.extension.listen(extensionServerPort);
     }
 }

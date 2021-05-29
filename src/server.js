@@ -90,7 +90,10 @@ class OpenBlockResourceServer extends Emitter{
                 res.send(JSON.stringify(thumbnailData));
             });
 
-            this._app.listen(this._socketPort);
+            this._app.listen(this._socketPort).on('error', e => {
+                const info = `Error while trying to listen port ${this._socketPort}: ${e}`;
+                this.emit('error', info);
+            });
 
             this.emit('ready');
             console.log(`\n----------------------------------------`);
