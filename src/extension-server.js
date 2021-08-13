@@ -13,7 +13,7 @@ const DEFAULT_PORT = 20120;
  * Extenions class.
  * @readonly
  */
-const EXTENSION_CLASS = ['sheild', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
+const EXTENSION_CLASS = ['shield', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
 
 /**
  * Device tyoe.
