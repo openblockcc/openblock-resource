@@ -1,10 +1,10 @@
 # openblock-resource
 
-![](https://img.shields.io/travis/com/openblockcc/openblock-resource) ![](https://img.shields.io/github/license/openblockcc/openblock-resource)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/openblockcc/openblock-resource/publish)
 
 Provide a local resource server for openblock.
 
-### Instructions
+## Instructions
 
 ```bash
 npm install
