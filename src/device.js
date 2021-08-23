@@ -1,46 +1,35 @@
-const OpenBlockResourceServer = require('./server');
 const requireAll = require('require-all');
 const path = require('path');
 
-/**
- * Configuration the default port.
- * @readonly
- */
-const DEFAULT_PORT = 20122;
+const TYPE = 'devices';
 
 /**
  * A server to provide local devices resource.
  */
-class OpenBlockDevice extends OpenBlockResourceServer{
+class OpenBlockDevice {
 
-    /**
-     * Construct a OpenBlock device server object.
-     * @param {string} userDataPath - the path of user data.
-     */
-    constructor (userDataPath) {
-        super(userDataPath, 'devices');
-
-        this._socketPort = DEFAULT_PORT;
+    constructor () {
+        this.type = TYPE;
     }
 
-    assembleData () {
+    assembleData (userDataPath, formatMessage) {
         const devicesThumbnailData = [];
 
         const devices = requireAll({
-            dirname: `${this._userDataPath}`,
+            dirname: `${path.join(userDataPath, this.type)}`,
             filter: /index.js$/,
             recursive: true
         });
 
         // eslint-disable-next-line global-require
-        const deviceList = require(path.join(this._userDataPath, 'device.js'));
+        const deviceList = require(path.join(userDataPath, this.type, 'device.js'));
         deviceList.forEach(listItem => {
             let matched = false;
             Object.entries(devices).forEach(catlog => {
                 Object.entries(catlog[1]).forEach(dev => {
-                    const content = dev[1]['index.js'](this._formatMessage);
+                    const content = dev[1]['index.js'](formatMessage);
                     if (content.deviceId === listItem) {
-                        const basePath = path.join(catlog[0], dev[0]);
+                        const basePath = path.join(this.type, catlog[0], dev[0]);
 
                         if (content.iconURL) {
                             content.iconURL = path.join(basePath, content.iconURL);

@@ -88,6 +88,6 @@ Object.entries(translations).forEach(locale => {
         }
     });
 
-    fs.writeFileSync(path.join(buildPath, `index.${locale}.json`), JSON.stringify(devicesThumbnailData));
+    fs.writeFileSync(path.join(buildPath, `${locale}.json`), JSON.stringify(devicesThumbnailData));
 
 });
