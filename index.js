@@ -13,6 +13,8 @@ const GIT = require('./src/git');
  */
 const DEFAULT_USER_DATA_PATH = path.join(__dirname, '../.openblockData');
 
+const DEFAULT_LOCALE = 'en';
+
 class OpenblockResourceServer {
     constructor (userDataPath, initialResourcesPath) {
         if (userDataPath) {
@@ -30,6 +32,7 @@ class OpenblockResourceServer {
 
         this._configPath = path.join(this._userDataPath, 'config.json');
 
+        this._locale = DEFAULT_LOCALE;
         this._extensionTransferred = 0;
 
         this.copyToUserDataPath();
@@ -45,7 +48,8 @@ class OpenblockResourceServer {
         }
     }
 
-    checkUpdate () {
+    checkUpdate (locale = DEFAULT_LOCALE) {
+        this._locale = locale;
         return new Promise((resolve, reject) => {
             if (fs.existsSync(this._configPath)) {
 
@@ -55,30 +59,28 @@ class OpenblockResourceServer {
                     if (this.git) {
                         delete this.git;
                     }
-                    this.device.setLocale().then(() => {
-                        this.git = new GIT(this._config.repository, this.device._locale);
+                    this.git = new GIT(this._config.repository, this._locale);
 
-                        this.git.getLatestReleases()
-                            .then(info => {
-                                if (info.version) {
-                                    console.log('info=', info);
-                                    const latestVersion = info.version;
+                    this.git.getLatestReleases()
+                        .then(info => {
+                            if (info.version) {
+                                console.log('info=', info);
+                                const latestVersion = info.version;
 
-                                    if (this._config.version) {
-                                        const curentVersion = this._config.version;
-                                        if (compareVersions.compare(latestVersion, curentVersion, '>')) {
-                                            this._latestVersion = latestVersion;
-                                            return resolve({version: latestVersion, describe: info.body});
-                                        }
-                                    } else {
-                                        return reject(`Cannot find version tag in: ${this._configPath}`);
+                                if (this._config.version) {
+                                    const curentVersion = this._config.version;
+                                    if (compareVersions.compare(latestVersion, curentVersion, '>')) {
+                                        this._latestVersion = latestVersion;
+                                        return resolve({version: latestVersion, describe: info.body});
                                     }
-                                    return resolve();
+                                } else {
+                                    return reject(`Cannot find version tag in: ${this._configPath}`);
                                 }
-                                return reject(`Cannot get valid releases from: ${this._config.repository}`);
-                            })
-                            .catch(err => reject(err));
-                    });
+                                return resolve();
+                            }
+                            return reject(`Cannot get valid releases from: ${this._config.repository}`);
+                        })
+                        .catch(err => reject(err));
 
                 } else {
                     return reject(`Cannot find valid repository in: ${this._configPath}`);
