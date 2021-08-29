@@ -6,10 +6,11 @@
   "scripts": {
     "fetch": "node ./script/download.js",
     "start": "rimraf ../.openblockData/external-resources && node ./test/start.js",
-    "clean": "rimraf external-resources dist downloading-* ../.openblockData/external-resources",
-    "build:extension": "node ./script/generate-extension-page.js --url=https://openblockcc.github.io/openblock-extension/",
-    "build:device": "node ./script/generate-device-page.js --url=https://openblockcc.github.io/openblock-device/",
+    "clean": "rimraf external-resources dist translation downloading-* ../.openblockData/external-resources",
+    "build:extension": "node ./script/generate-extension-page.js --url=https://openblockcc.github.io/external-resources/",
+    "build:device": "node ./script/generate-device-page.js --url=https://openblockcc.github.io/external-resources/",
     "build": "rimraf dist && npm run build:extension && npm run build:device",
+    "i18n:src": "node ./script/extract-format-message.js",
     "deploy": "npm run fetch && npm run build",
     "lint": "eslint ./",
     "test": "node test/upgrade.js"
@@ -33,6 +34,7 @@
     "babel-eslint": "^10.0.1",
     "eslint": "^5.3.0",
     "eslint-config-scratch": "^5.0.0",
+    "format-message-cli": "^6.2.3",
     "json": "^10.0.0"
   }
 }
