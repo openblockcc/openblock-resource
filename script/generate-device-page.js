@@ -5,7 +5,7 @@ const fs = require('fs');
 const copydir = require('copy-dir');
 
 const buildPath = path.join(__dirname, '../dist/devices');
-const translations = require(path.join(__dirname, '../external-resources/devices/locales.js'));
+const translations = require(path.join(__dirname, '../external-resources/locales.js'));
 
 const parseArgs = () => {
     const scriptArgs = process.argv.slice(2); // remove `node` and `this-script.js`
