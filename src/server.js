@@ -31,13 +31,11 @@ class OpenBlockResourceServer extends Emitter{
         this.devices = new OpenBlockDevice();
 
         // eslint-disable-next-line global-require
-        const devicesTranslations = require(path.join(this._userDataPath, this.devices.type, 'locales.js'));
-        // eslint-disable-next-line global-require
-        const extensionsTranslations = require(path.join(this._userDataPath, this.extensions.type, 'locales.js'));
+        const translations = require(path.join(this._userDataPath, 'locales.js'));
 
         this._formatMessage.setup({
             locale: 'en',
-            translations: Object.assign({}, devicesTranslations, extensionsTranslations)
+            translations: translations
         });
     }
 
