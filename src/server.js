@@ -12,6 +12,12 @@ const OpenBlockExtension = require('./extension');
 const DEFAULT_PORT = 20120;
 
 /**
+ * Supported locale list.
+ * @readonly
+ */
+const LOCALE_LIST = ['en', 'zh-cn'];
+
+/**
  * A server to provide local resource.
  */
 class OpenBlockResourceServer extends Emitter{
@@ -25,7 +31,6 @@ class OpenBlockResourceServer extends Emitter{
 
         this._userDataPath = userDataPath;
         this._socketPort = DEFAULT_PORT;
-        this._formatMessage = formatMessage.namespace();
 
         this.extensions = new OpenBlockExtension();
         this.devices = new OpenBlockDevice();
@@ -33,9 +38,23 @@ class OpenBlockResourceServer extends Emitter{
         // eslint-disable-next-line global-require
         const translations = require(path.join(this._userDataPath, 'locales.js'));
 
-        this._formatMessage.setup({
-            locale: 'en',
-            translations: translations
+        this._formatMessage = {};
+        this.deviceIndexData = {};
+        this.extensionsIndexData = {};
+
+        // Prepare data in advance to speed up data transmission
+        LOCALE_LIST.forEach(locale => {
+            this._formatMessage[`${locale}`] = formatMessage.namespace();
+            this._formatMessage[`${locale}`].setup({
+                locale: locale,
+                translations: translations
+            });
+
+            this.deviceIndexData[`${locale}`] =
+                JSON.stringify(this.devices.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
+
+            this.extensionsIndexData[`${locale}`] =
+                JSON.stringify(this.extensions.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
         });
     }
 
@@ -61,12 +80,10 @@ class OpenBlockResourceServer extends Emitter{
             const locale = req.params.locale.slice(0, -5);
             const type = req.params.type;
 
-            this._formatMessage.setup({locale: locale});
-
             if (type === this.extensions.type) {
-                res.send(JSON.stringify(this.extensions.assembleData(this._userDataPath, this._formatMessage)));
+                res.send(this.extensionsIndexData[`${locale}`]);
             } else if (type === this.devices.type) {
-                res.send(JSON.stringify(this.devices.assembleData(this._userDataPath, this._formatMessage)));
+                res.send(this.deviceIndexData[`${locale}`]);
             }
         });
 
