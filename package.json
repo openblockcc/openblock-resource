@@ -4,7 +4,6 @@
   "description": "External resources for OpenBlock projects",
   "main": "start.js",
   "bin": {
-    "gen-translations": "./bin/extract-format-message.js",
     "gen-hash": "./bin/gen-hash-file.js",
     "gen-config": "./bin/gen-config.js",
     "opt-size": "./bin/optimization-size.js",
