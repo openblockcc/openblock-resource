@@ -41,7 +41,7 @@
     "babel-eslint": "^10.0.1",
     "eslint": "^5.3.0",
     "eslint-config-scratch": "^5.0.0",
-    "openblock-resource-cli": "^0.1.0",
+    "openblock-resource-cli": "^0.1.1",
     "progress": "^2.0.3",
     "request": "^2.88.2",
     "request-progress": "^3.0.0",
