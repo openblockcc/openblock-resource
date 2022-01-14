@@ -35,8 +35,8 @@ Provide a local resource server for openblock. It also includes some cli tools f
 
   - Translation tools
 
-    - **translate:extract** used to extract all i18n content within resources identified as community official extensions
+    - **i18n-extract** used to extract all i18n content within resources identified as community official extensions
 
-    - **translate:push** used to push the extracted i18n content to transifex
+    - **i18n-push** used to push the extracted i18n content to transifex
 
-    - **translate:update** used to pull the translation content on transifex, generate and update the local translation file
+    - **i18n-update** used to pull the translation content on transifex, generate and update the local translation file

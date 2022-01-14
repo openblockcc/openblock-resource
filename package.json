@@ -7,9 +7,9 @@
     "gen-hash": "./bin/gen-hash-file.js",
     "gen-config": "./bin/gen-config.js",
     "opt-size": "./bin/optimization-size.js",
-    "translate:extract": "./i18n/extract-format-message.js",
-    "translate:push": "./i18n/push-format-message.js",
-    "translate:update": "./i18n/update-translations.js"
+    "i18n-extract": "./i18n/extract-format-message.js",
+    "i18n-push": "./i18n/push-format-message.js",
+    "i18n-update": "./i18n/update-translations.js"
   },
   "scripts": {
     "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources",
@@ -23,9 +23,9 @@
     "test:opt-size": "node bin/optimization-size.js --dir=external-resources",
     "test:gen-config": "node bin/gen-config.js --dir=external-resources --version=v0.0.1 --repo=openblockcc/external-resources --cdn=https://cdn.openblock.cc/",
     "test:gen-hash": "node bin/gen-hash-file.js --dir=external-resources",
-    "test:translate:extract": "node i18n/extract-format-message.js  --dir=external-resources",
-    "test:translate:push": "node i18n/push-format-message.js --dir=external-resources",
-    "test:translate:update": "node i18n/update-translations.js  --dir=external-resources",
+    "test:i18n-extract": "node i18n/extract-format-message.js  --dir=external-resources",
+    "test:i18n-push": "node i18n/push-format-message.js --dir=external-resources",
+    "test:i18n-update": "node i18n/update-translations.js  --dir=external-resources",
     "lint": "eslint ./",
     "test": "node test/upgrade.js"
   },
