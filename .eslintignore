@@ -2,3 +2,4 @@ node_modules/*
 external-resources/*
 dist/*
 translation/*
+download/*
