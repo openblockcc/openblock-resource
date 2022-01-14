@@ -35,8 +35,8 @@ const runCliSync = cmd => {
     }
 };
 
-const pushBlocksContent = 'tx-push-src openblock-resources blocks ${path.resovle(workDir)}/translations/blocks/en.json';
-const pushInterfaceContent = `tx-push-src openblock-resources interface ${path.resovle(workDir)}/translations/interface/en.json`; // eslint-disable-line max-len
+const pushBlocksContent = `tx-push-src openblock-resources blocks ${path.resolve(workDir)}/translations/blocks/en.json`;
+const pushInterfaceContent = `tx-push-src openblock-resources interface ${path.resolve(workDir)}/translations/interface/en.json`; // eslint-disable-line max-len
 
 runCliSync(pushBlocksContent);
 runCliSync(pushInterfaceContent);

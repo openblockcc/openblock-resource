@@ -38,6 +38,9 @@ const TX = new transifex({
     credential: `api:${process.env.TX_TOKEN}`
 });
 
+const EXTENSIONS_INTERFACE_FILE = 'index.js';
+const EXTENSIONS_MSG_FILE = 'msg.json';
+
 const {dir} = parseArgs();
 
 let workDir;
