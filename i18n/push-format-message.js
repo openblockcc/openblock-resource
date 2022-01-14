@@ -2,7 +2,7 @@
 
 /**
  * @fileoverview
- * Push the extracted 18n content in external resource.
+ * Push the extracted 18n content in external resource to transifex.
  *
  * The default scan path is the path where the current command is executed,
  * but you can use --dir to specify the download address, e.g: --dir=external-resources
