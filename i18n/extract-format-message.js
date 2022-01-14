@@ -20,6 +20,17 @@ const EXTENSIONS_MSG_FILE = 'msg.json';
 
 const interfaceFormatMessages = [];
 
+// Dont't add unofficial content in to community translation
+const isOfficial = filePath => {
+    let official = false;
+    const indexContent = fs.readFileSync(path.join(path.dirname(filePath), EXTENSIONS_INTERFACE_FILE), 'utf8');
+    const matchOfficial = indexContent.match(/official: \w+/g);
+    if (matchOfficial && matchOfficial.length > 0) {
+        official = matchOfficial[0].slice(matchOfficial[0].indexOf(':') + 2) === 'true';
+    }
+    return official;
+};
+
 const searchInterfaceFormatMessages = (err, pathName, dirent) => {
     if (err) {
         console.error(err);
@@ -27,19 +38,25 @@ const searchInterfaceFormatMessages = (err, pathName, dirent) => {
     }
 
     if (!dirent.isDirectory() && path.basename(pathName) === EXTENSIONS_INTERFACE_FILE) {
-        const content = fs.readFileSync(pathName, 'utf8');
-        const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
-        if (matchedContent) {
-            matchedContent.forEach(msg => {
-                const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                    .replace(/\n/g, '')
-                    .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`)
-                    .replace(/'/g, '"')
-                    .replace(/" *\+ *"/g, ''); // combine addition expression
-
-                const msgObj = JSON.parse(preproccessedMsg);
-                interfaceFormatMessages.push(msgObj);
-            });
+        if (isOfficial(pathName)) {
+            const content = fs.readFileSync(pathName, 'utf8');
+            const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
+            if (matchedContent) {
+                matchedContent.forEach(msg => {
+                    const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
+                        .replace(/\n/g, '')
+                        .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`)
+                        .replace(/'/g, '"')
+                        .replace(/" *\+ *"/g, ''); // combine addition expression
+                    try {
+                        const msgObj = JSON.parse(preproccessedMsg);
+                        interfaceFormatMessages.push(msgObj);
+                    } catch (e) {
+                        console.error(`Error parsing ${msg} in ${pathName}: ${e}`);
+                        process.exit(1);
+                    }
+                });
+            }
         }
     }
     return Promise.resolve();
@@ -70,16 +87,7 @@ const searchBlocksFormatMessages = (err, pathName, dirent) => {
     }
 
     if (!dirent.isDirectory() && path.basename(pathName) === EXTENSIONS_BLOCKS_FILE) {
-
-        // Dont't add unofficial extension in to community translation
-        let isOfficial = false;
-        const indexContent = fs.readFileSync(path.join(path.dirname(pathName), EXTENSIONS_INTERFACE_FILE), 'utf8');
-        const matchOfficial = indexContent.match(/official: \w+/g);
-        if (matchOfficial && matchOfficial.length > 0) {
-            isOfficial = matchOfficial[0].slice(matchOfficial[0].indexOf(':') + 2) === 'true';
-        }
-
-        if (isOfficial) {
+        if (isOfficial(pathName)) {
             const blocksContent = fs.readFileSync(pathName, 'utf8');
             let blocksMsgKeys = blocksContent.match(/Blockly.Msg.\w+/g);
             if (blocksMsgKeys) {

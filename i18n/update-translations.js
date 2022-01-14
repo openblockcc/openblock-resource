@@ -170,7 +170,7 @@ const generateInterfaceTranslationsFile = values => {
         validateTranslations({locale: translation.locale, translations: JSON.parse(flattenedJson)}, source);
         combinedJson[translation.locale] = JSON.parse(flattenedJson);
     });
-    const filePath = path.resolve(workDir, 'locales.json');
+    const filePath = path.resolve(workDir, 'official-locales.json');
     fs.writeFileSync(filePath, JSON.stringify(combinedJson, null, 4));
     console.log(`Interface translation file is created in path: ${filePath}`);
 };
