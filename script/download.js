@@ -131,7 +131,7 @@ getLatest()
             .then(() => download(checksumUrl, checksumPath))
             .then(() => {
                 // Compare archive checksums
-                const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split(' ')[0];
+                const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split('  ')[0];
                 hashFiles({files: resourcePath, algorithm: 'sha256'}, (error, hash) => {
                     if (error) {
                         throw error;
@@ -146,11 +146,15 @@ getLatest()
                                     const dirHash = fs.readFileSync(path.join(extractPath, 'folder-checksum-sha256.txt'), 'utf8'); // eslint-disable-line max-len
                                     if (dirHash === h) {
                                         console.log(`\nexternal resource has been successfully downloaded and extracted to path: ${extractPath}`); // eslint-disable-line max-len
+                                    } else {
+                                        console.error(`${extractPath} has failed the folder checksum detection`);
+                                        process.exit(1);
                                     }
                                 });
                             });
                     } else {
                         console.error(`${resourcePath} has failed the checksum detection`);
+                        process.exit(1);
                     }
                 });
             });
