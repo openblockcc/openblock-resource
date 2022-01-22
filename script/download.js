@@ -21,7 +21,11 @@ const parseArgs = require('./parseArgs');
 const {repo, cdn} = parseArgs();
 
 const getLatest = () => {
-    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    let url = `https://api.github.com/repos/${repo}/releases/latest`;
+
+    if (cdn) {
+        url = `${cdn}/${url}`;
+    }
 
     return new Promise((resolve, reject) => {
         fetch(url)
@@ -35,7 +39,7 @@ const download = (url, dest) => {
     const red = '\u001b[41m \u001b[0m';
 
     if (cdn) {
-        url = `${cdn}${url}`;
+        url = `${cdn}/${url}`;
     }
 
     return new Promise((resolve, reject) => {
