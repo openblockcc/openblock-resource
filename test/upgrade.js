@@ -3,19 +3,21 @@ const OpenblockResourceServer = require('../index');
 const resourceServer = new OpenblockResourceServer();
 
 // Test the upgrade funciton.
-resourceServer.checkUpdate().then(updateInfo => {
-    if (updateInfo){
-        console.log('updateInfo:', updateInfo);
-        resourceServer.upgrade(downloadInfo => {
-            console.log(`phase: ${downloadInfo.phase}`);
-        })
-            .then(() => {
-                console.log('upgrade finish');
-            });
-    } else {
-        console.log('External-resources are the latest version');
-    }
-})
+resourceServer.checkUpdate()
+    .then(info => {
+        console.log('check update info:', info);
+        if (info.upgradeble) {
+            resourceServer.upgrade(console.log)
+                .then(() => {
+                    console.log('upgrade success');
+                })
+                .catch(err => {
+                    console.error('upgrade failed:', err);
+                });
+        } else {
+            console.log('No need to upgrade.');
+        }
+    })
     .catch(err => {
-        console.error('Error while checking for update: ', err);
+        console.log('check update failed:', err);
     });

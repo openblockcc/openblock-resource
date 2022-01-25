@@ -14,7 +14,9 @@ const progress = require('request-progress');
 const ProgressBar = require('progress');
 const extract = require('extract-zip');
 const hashFiles = require('hash-files');
-const {calcDirHash} = require('../src/calc-dir-hash');
+
+const {checkDirHash} = require('../src/calc-dir-hash');
+const {formatSize, formatTime} = require('../src/format');
 const parseArgs = require('./parseArgs');
 
 
@@ -53,34 +55,9 @@ const download = (url, dest) => {
         console.log('download from url:', url);
         progress(request(url))
             .on('progress', state => {
-                let tokenSpeed;
-                if (state.speed < 1024) {
-                    tokenSpeed = `${Math.round(state.speed)} B/s`;
-                } else if (state.speed < 1024 * 1024) {
-                    tokenSpeed = `${Math.round(state.speed / 1024)} KB/s`;
-                } else if (state.speed < 1024 * 1024 * 1024) {
-                    tokenSpeed = `${Math.round(state.speed / 1024 / 1024)} MB/s`;
-                } else {
-                    tokenSpeed = `${Math.round(state.speed / 1024 / 1024 / 1024)} GB/s`;
-                }
-
-                let tokenSize;
-                if (state.size.total < 1024) {
-                    tokenSize = `${state.size.transferred}/${state.size.total})B`;
-                } else if (state.size.total < 1024 * 1024) {
-                    tokenSize = `${Math.round(state.size.transferred / 1024)}/${Math.round(state.size.total / 1024)}KB`;
-                } else if (state.size.total < 1024 * 1024 * 1024) {
-                    tokenSize = `${Math.round(state.size.transferred / 1024 / 1024)}/${Math.round(state.size.total / 1024 / 1024)}MB`; // eslint-disable-line max-len
-                } else {
-                    tokenSize = `${Math.round(state.size.transferred / 1024 / 1024 / 1024)}/${Math.round(state.size.total / 1024 / 1024 / 1024)}GB`; // eslint-disable-line max-len
-                }
-
-                let tokenRemaining;
-                if (state.time.remaining < 60) {
-                    tokenRemaining = `${Math.round(state.time.remaining)}s`;
-                } else {
-                    tokenRemaining = `${Math.round(state.time.remaining / 60)}min${Math.round(state.time.remaining % 60)}s`; // eslint-disable-line max-len
-                }
+                const tokenSpeed = `${formatSize(state.speed)}/s`;
+                const tokenSize = `${formatSize(state.size.transferred).replace(/(?: |B|K|M|G)/g, '')}/${formatSize(state.size.total)}`; // eslint-disable-line max-len
+                const tokenRemaining = formatTime(state.time.remaining);
 
                 bar.update(state.percent, {
                     tokenSpeed: tokenSpeed,
@@ -146,15 +123,18 @@ getLatest()
                         extract(resourcePath, {dir: extractPath})
                             .then(() => {
                                 // Compare folder checksums
-                                calcDirHash(extractPath).then(h => {
-                                    const dirHash = fs.readFileSync(path.join(extractPath, 'folder-checksum-sha256.txt'), 'utf8'); // eslint-disable-line max-len
-                                    if (dirHash === h) {
+                                const dirHash = fs.readFileSync(path.resolve(extractPath, 'folder-checksum-sha256.txt'), 'utf8'); // eslint-disable-line max-len
+
+                                checkDirHash(extractPath, dirHash)
+                                    .then(() => {
+                                        fs.rmSync(downloadPath, {recursive: true, force: true});
+
                                         console.log(`\nexternal resource has been successfully downloaded and extracted to path: ${extractPath}`); // eslint-disable-line max-len
-                                    } else {
+                                    })
+                                    .catch(() => {
                                         console.error(`${extractPath} has failed the folder checksum detection`);
                                         process.exit(1);
-                                    }
-                                });
+                                    });
                             });
                     } else {
                         console.error(`${resourcePath} has failed the checksum detection`);

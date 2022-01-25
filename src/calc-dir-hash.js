@@ -18,6 +18,15 @@ const calcDirHash = dir => new Promise((resolve, reject) => {
         .catch(error => reject(error));
 });
 
-const calcDirHashSync = async dir => await calcDirHash(dir);
 
-module.exports = {calcDirHash, calcDirHashSync};
+const checkDirHash = (dir, hash) =>
+    calcDirHash(dir)
+        .then(h => {
+            if (h === hash) {
+                return Promise.resolve();
+            }
+            return Promise.reject(`${dir} has failed the folder checksum detection`);
+
+        });
+
+module.exports = {calcDirHash, checkDirHash};
