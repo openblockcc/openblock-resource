@@ -24,6 +24,7 @@
   "author": "ArthurZheng",
   "license": "MIT",
   "dependencies": {
+    "byte-size": "^8.1.0",
     "compare-versions": "^3.6.0",
     "copy-dir": "^1.3.0",
     "express": "^4.17.1",
@@ -35,7 +36,7 @@
     "keymirror": "^0.1.1",
     "lodash": "^4.17.21",
     "loglevel": "^1.8.0",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "openblock-l10n": "^3.10.20220105060755",
     "openblock-parse-release-message": "0.0.1",
     "require-all": "^3.0.0"

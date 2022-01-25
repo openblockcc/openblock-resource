@@ -1,17 +1,3 @@
-const formatSize = size => {
-    let formatedSize;
-    if (size < 1024) {
-        formatedSize = `${Math.round(size)} B`;
-    } else if (size < 1024 * 1024) {
-        formatedSize = `${Math.round(size / 1024)} KB`;
-    } else if (size < 1024 * 1024 * 1024) {
-        formatedSize = `${Math.round(size / 1024 / 1024)} MB`;
-    } else {
-        formatedSize = `${Math.round(size / 1024 / 1024 / 1024)} GB`;
-    }
-    return formatedSize;
-};
-
 const formatTime = time => {
     let formatedTime;
     if (time < 60) {
@@ -22,4 +8,4 @@ const formatTime = time => {
     return formatedTime;
 };
 
-module.exports = {formatSize, formatTime};
+module.exports = {formatTime};

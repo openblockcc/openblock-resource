@@ -14,9 +14,10 @@ const progress = require('request-progress');
 const ProgressBar = require('progress');
 const extract = require('extract-zip');
 const hashFiles = require('hash-files');
+const byteSize = require('byte-size');
 
 const {checkDirHash} = require('../src/calc-dir-hash');
-const {formatSize, formatTime} = require('../src/format');
+const {formatTime} = require('../src/format');
 const parseArgs = require('./parseArgs');
 
 
@@ -55,8 +56,8 @@ const download = (url, dest) => {
         console.log('download from url:', url);
         progress(request(url))
             .on('progress', state => {
-                const tokenSpeed = `${formatSize(state.speed)}/s`;
-                const tokenSize = `${formatSize(state.size.transferred).replace(/(?: |B|K|M|G)/g, '')}/${formatSize(state.size.total)}`; // eslint-disable-line max-len
+                const tokenSpeed = `${byteSize(state.speed)}/s`;
+                const tokenSize = `${byteSize(state.size.transferred)}/${byteSize(state.size.total)}`; // eslint-disable-line max-len
                 const tokenRemaining = formatTime(state.time.remaining);
 
                 bar.update(state.percent, {

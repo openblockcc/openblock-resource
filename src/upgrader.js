@@ -7,10 +7,11 @@ const hashFiles = require('hash-files');
 const extract = require('extract-zip');
 const fetch = require('node-fetch');
 const parseMessage = require('openblock-parse-release-message');
+const byteSize = require('byte-size');
 
 const {UPGRADE_STEP, CHECKING_CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
-const {formatSize, formatTime} = require('./format');
+const {formatTime} = require('./format');
 const {DIRECTORY_NAME} = require('./config');
 
 class ResourceUpgrader extends Emitter{
@@ -59,19 +60,16 @@ class ResourceUpgrader extends Emitter{
         return new Promise((resolve, reject) => {
             progress(request(url))
                 .on('progress', state => {
-                    const tokenSpeed = `${formatSize(state.speed)}/s`;
-                    const tokenSize = `${formatSize(state.size.transferred).replace(/(?: |B|K|M|G)/g, '')}/${formatSize(state.size.total)}`; // eslint-disable-line max-len
-                    const tokenRemaining = formatTime(state.time.remaining);
-
                     if (callback) {
                         callback({
                             phase: UPGRADE_STEP.downloading,
                             info: {
                                 name: path.basename(dest),
                                 percent: state.percent, // 0 ~ 1
-                                tokenSpeed: tokenSpeed,
-                                tokenSize: tokenSize,
-                                tokenRemaining: tokenRemaining
+                                speed: `${byteSize(state.speed)}/s`,
+                                total: byteSize(state.size.total),
+                                transferred: byteSize(state.size.transferred),
+                                remaining: formatTime(state.time.remaining)
                             }
                         });
                     }
