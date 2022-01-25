@@ -55,7 +55,7 @@ class OpenblockResourceServer extends Emitter{
             this.checkResources()
                 .then(() => resolve())
                 .catch(e => {
-                    console.log(e);
+                    console.log(`Warning: Check resources failed, try to initial resources: ${e}`);
                     if (fs.existsSync(this._userDataPath)){
                         fs.rmSync(this._userDataPath, {recursive: true, force: true});
                     }
