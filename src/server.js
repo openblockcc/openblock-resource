@@ -8,7 +8,6 @@ const OpenBlockExtension = require('./extension');
 const locales = require('openblock-l10n').default;
 const {defaultsDeep} = require('lodash');
 const fetch = require('node-fetch');
-const log = require('loglevel');
 const http = require('http');
 
 /**
@@ -71,7 +70,7 @@ class OpenBlockResourceServer extends Emitter{
             );
         } catch (e) {
             this.emit('error', e);
-            log.error(`Can not find ${OFFICIAL_TRANSLATIONS_FILE} or ${THIRD_PARTY_TRANSLATIONS_FILE} in path: ${this._userDataPath}, please check user data path.`); // eslint-disable-line max-len
+            console.error(`Can not find ${OFFICIAL_TRANSLATIONS_FILE} or ${THIRD_PARTY_TRANSLATIONS_FILE} in path: ${this._userDataPath}, please check user data path.`); // eslint-disable-line max-len
         }
 
         this._formatMessage = {};
@@ -92,22 +91,6 @@ class OpenBlockResourceServer extends Emitter{
             this.extensionsIndexData[`${locale}`] =
                 JSON.stringify(this.extensions.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
         });
-
-        const {logLevel} = this.parseArgs();
-        log.setLevel(logLevel);
-    }
-
-    parseArgs () {
-        const scriptArgs = process.argv.slice(2);
-        let logLevel = 'error';
-
-        for (const arg of scriptArgs) {
-            const argSplit = arg.split(/--log-level(\s+|=)/);
-            if (argSplit[1] === '=') {
-                logLevel = argSplit[2];
-            }
-        }
-        return {logLevel};
     }
 
     isCurrentServer (host, port) {
@@ -171,13 +154,13 @@ class OpenBlockResourceServer extends Emitter{
 
         this._server.listen(this._port, this._host, () => {
             this.emit('ready');
-            log.info(`\x1B[32mOpenblock resource server start successfully\nSocket server listend: http://${this._host}:${this._port}\x1B[0m`);
+            console.log(`\x1B[32mOpenblock resource server start successfully\nSocket server listend: http://${this._host}:${this._port}\x1B[0m`);
         })
             .on('error', e => {
                 this.isCurrentServer('127.0.0.1', this._port).then(isCurrent => {
                     if (isCurrent) {
                         this.emit('port-in-use');
-                        log.debug(`Port is already used by other openblock-resource server, try reopening after another ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
+                        console.log(`Port is already used by other openblock-resource server, try reopening after another ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
                         setTimeout(() => {
                             this._server.close();
                             this._server.listen(this._port, this._host);
@@ -185,7 +168,7 @@ class OpenBlockResourceServer extends Emitter{
                     } else {
                         const info = `Error while trying to listen port ${this._port}: ${e}`;
                         this.emit('error', info);
-                        log.error(info);
+                        console.error(info);
                     }
                 });
             });
