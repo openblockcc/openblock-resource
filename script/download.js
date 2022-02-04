@@ -23,6 +23,11 @@ const parseArgs = require('./parseArgs');
 
 const {repo, cdn} = parseArgs();
 
+if (!repo) {
+    console.error('No repo specified');
+    process.exit(1);
+}
+
 const getLatest = () => {
     let url = `https://api.github.com/repos/${repo}/releases/latest`;
 
@@ -124,6 +129,7 @@ getLatest()
                         extract(resourcePath, {dir: extractPath})
                             .then(() => {
                                 // Compare folder checksums
+                                // TODO 从config文件中读取
                                 const dirHash = fs.readFileSync(path.resolve(extractPath, 'folder-checksum-sha256.txt'), 'utf8'); // eslint-disable-line max-len
 
                                 checkDirHash(extractPath, dirHash)
