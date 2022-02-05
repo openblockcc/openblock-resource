@@ -15,16 +15,18 @@ const ProgressBar = require('progress');
 const extract = require('extract-zip');
 const hashFiles = require('hash-files');
 const byteSize = require('byte-size');
+const clc = require('cli-color');
 
 const {checkDirHash} = require('../src/calc-dir-hash');
 const {formatTime} = require('../src/format');
 const parseArgs = require('./parseArgs');
+const getConfigHash = require('../src/get-config-hash');
 
 
 const {repo, cdn} = parseArgs();
 
 if (!repo) {
-    console.error('No repo specified');
+    console.error(clc.red('ERR!: No repo specified'));
     process.exit(1);
 }
 
@@ -129,22 +131,25 @@ getLatest()
                         extract(resourcePath, {dir: extractPath})
                             .then(() => {
                                 // Compare folder checksums
-                                // TODO 从config文件中读取
-                                const dirHash = fs.readFileSync(path.resolve(extractPath, 'folder-checksum-sha256.txt'), 'utf8'); // eslint-disable-line max-len
+                                const configFilePath = path.resolve(extractPath, 'config.json');
+                                const dirHash = getConfigHash(configFilePath);
+                                if (!dirHash) {
+                                    console.warn(clc.yellow(`WARN: no hash value found in ${configFilePath}`));
+                                    return Promise.resolve();
+                                }
+                                return checkDirHash(extractPath, dirHash);
+                            })
+                            .then(() => {
+                                fs.rmSync(downloadPath, {recursive: true, force: true});
 
-                                checkDirHash(extractPath, dirHash)
-                                    .then(() => {
-                                        fs.rmSync(downloadPath, {recursive: true, force: true});
-
-                                        console.log(`\nexternal resource has been successfully downloaded and extracted to path: ${extractPath}`); // eslint-disable-line max-len
-                                    })
-                                    .catch(() => {
-                                        console.error(`${extractPath} has failed the folder checksum detection`);
-                                        process.exit(1);
-                                    });
+                                console.log(clc.green(`\nExternal resource has been successfully downloaded and extracted to path: ${extractPath}`)); // eslint-disable-line max-len
+                            })
+                            .catch(() => {
+                                console.error(clc.red(`ERR!: ${extractPath} has failed the folder checksum detection`));
+                                process.exit(1);
                             });
                     } else {
-                        console.error(`${resourcePath} has failed the checksum detection`);
+                        console.error(clc.red(`ERR!: ${resourcePath} has failed the checksum detection`));
                         process.exit(1);
                     }
                 });

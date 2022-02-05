@@ -1,4 +1,5 @@
 const OpenblockResourceServer = require('../index');
+const clc = require('cli-color');
 
 const resourceServer = new OpenblockResourceServer();
 
@@ -8,5 +9,9 @@ resourceServer.initialResources(console.log)
         resourceServer.listen();
     })
     .catch(err => {
-        console.error('Error while initial resources: ', err);
+        console.error(clc.red(`ERR!: Initial resources error: ${err}`));
     });
+
+resourceServer.on('error', err => {
+    console.error(clc.red(`ERR!: Resource server error: ${err}`));
+});

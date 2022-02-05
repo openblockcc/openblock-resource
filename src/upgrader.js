@@ -8,11 +8,13 @@ const extract = require('extract-zip');
 const fetch = require('node-fetch');
 const parseMessage = require('openblock-parse-release-message');
 const byteSize = require('byte-size');
+const clc = require('cli-color');
 
-const {UPGRADE_STEP, CHECKING_CONTENT} = require('./state');
+const {UPGRADE_STEP, CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
 const {formatTime} = require('./format');
 const {DIRECTORY_NAME} = require('./config');
+const getConfigHash = require('./get-config-hash');
 
 class ResourceUpgrader extends Emitter{
     constructor (repo, cdn, workDir) {
@@ -67,8 +69,8 @@ class ResourceUpgrader extends Emitter{
                                 name: path.basename(dest),
                                 percent: state.percent, // 0 ~ 1
                                 speed: `${byteSize(state.speed)}/s`,
-                                total: byteSize(state.size.total),
-                                transferred: byteSize(state.size.transferred),
+                                total: `${byteSize(state.size.total)}`,
+                                transferred: `${byteSize(state.size.transferred)}`,
                                 remaining: formatTime(state.time.remaining)
                             }
                         });
@@ -102,59 +104,72 @@ class ResourceUpgrader extends Emitter{
                 if (callback){
                     callback({
                         phase: UPGRADE_STEP.checking,
-                        info: {name: CHECKING_CONTENT.zip}
+                        info: {name: CONTENT.downloadedFile}
                     });
                 }
                 const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split('  ')[0];
-                return new Promise((resolve, reject) => {
-                    hashFiles({files: resourcePath, algorithm: 'sha256'}, (error, hash) => {
-                        if (error) {
-                            return reject(error);
-                        }
+                const hash = hashFiles.sync({files: resourcePath, algorithm: 'sha256'});
 
-                        if (zipChecksum === hash) {
-                            // Step 3: delete old directory.
-                            const extractPath = path.resolve(this._workDir, DIRECTORY_NAME);
+                if (zipChecksum === hash) {
+                    // Step 3: delete old directory.
+                    const extractPath = path.resolve(this._workDir, DIRECTORY_NAME);
+                    if (callback) {
+                        callback({
+                            phase: UPGRADE_STEP.deleting,
+                            info: {name: CONTENT.userDirectory}
+                        });
+                    }
+                    fs.rmSync(extractPath, {recursive: true, force: true});
+
+                    // Step 4: extract zip.
+                    if (callback) {
+                        callback({
+                            phase: UPGRADE_STEP.extracting
+                        });
+                    }
+                    return extract(resourcePath, {dir: extractPath})
+                        .then(() => {
+                            // Step 5: check checksum of extracted directory.
                             if (callback) {
                                 callback({
-                                    phase: UPGRADE_STEP.deleting
+                                    phase: UPGRADE_STEP.checking,
+                                    info: {name: CONTENT.userDirectory}
+                                });
+                            }
+
+                            const configFilePath = path.resolve(extractPath, 'config.json');
+                            const dirHash = getConfigHash(configFilePath);
+                            if (!dirHash) {
+                                console.warn(clc.yellow(`WARN: no hash value found in ${configFilePath}`));
+                                return Promise.resolve();
+                            }
+                            return checkDirHash(extractPath, dirHash);
+                        })
+                        .then(() => {
+                            // Step 6.1: delete downloaded files.
+                            if (callback) {
+                                callback({
+                                    phase: UPGRADE_STEP.deleting,
+                                    info: {name: CONTENT.downloadedFile}
+                                });
+                            }
+
+                            fs.rmSync(resourcePath, {recursive: true, force: true});
+                            fs.rmSync(checksumPath, {recursive: true, force: true});
+                        })
+                        .catch(err => {
+                            // Step 6.2: if check failed, delete extracted directory.
+                            if (callback) {
+                                callback({
+                                    phase: UPGRADE_STEP.deleting,
+                                    info: {name: CONTENT.userDirectory}
                                 });
                             }
                             fs.rmSync(extractPath, {recursive: true, force: true});
-
-                            // Step 4: extract zip.
-                            if (callback) {
-                                callback({
-                                    phase: UPGRADE_STEP.extracting
-                                });
-                            }
-                            return extract(resourcePath, {dir: extractPath})
-                                .then(() => {
-                                    fs.rmSync(resourcePath, {recursive: true, force: true});
-                                    fs.rmSync(checksumPath, {recursive: true, force: true});
-
-                                    // Step 5: check checksum of extracted directory.
-                                    if (callback) {
-                                        callback({
-                                            phase: UPGRADE_STEP.checking,
-                                            info: {name: CHECKING_CONTENT.directory}
-                                        });
-                                    }
-
-                                    const checksumFile = path.resolve(extractPath, 'folder-checksum-sha256.txt');
-
-                                    if (!fs.existsSync(checksumFile)) {
-                                        return Promise.reject(`Cannot find checksum file: ${checksumFile}`);
-                                    }
-
-                                    const dirHash = fs.readFileSync(checksumFile, 'utf8');
-                                    return checkDirHash(extractPath, dirHash);
-                                });
-                        }
-                        return reject(`${resourcePath} has failed the checksum detection`);
-
-                    });
-                });
+                            return Promise.reject(err);
+                        });
+                }
+                return Promise.reject(`${resourcePath} has failed the checksum detection`);
             });
     }
 }

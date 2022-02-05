@@ -8,9 +8,9 @@ const UPGRADE_STEP = keyMirror({
     covering: null
 });
 
-const CHECKING_CONTENT = keyMirror({
-    zip: null,
-    directory: null
+const CONTENT = keyMirror({
+    downloadedFile: null,
+    userDirectory: null
 });
 
 const INIT_RESOURCES_STEP = keyMirror({
@@ -18,4 +18,4 @@ const INIT_RESOURCES_STEP = keyMirror({
     copying: null
 });
 
-module.exports = {UPGRADE_STEP, CHECKING_CONTENT, INIT_RESOURCES_STEP};
+module.exports = {UPGRADE_STEP, CONTENT, INIT_RESOURCES_STEP};

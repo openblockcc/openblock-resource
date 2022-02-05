@@ -7,7 +7,7 @@ const calcDirHash = dir => new Promise((resolve, reject) => {
         algo: 'sha256',
         encoding: 'hex',
         folders: {exclude: ['.git', '.github']},
-        files: {exclude: ['.gitignore', 'folder-checksum-sha256.txt']}
+        files: {exclude: ['.gitignore', 'config.json']}
     };
     hashElement(dir, options)
         .then(hash => resolve(
@@ -26,7 +26,6 @@ const checkDirHash = (dir, hash) =>
                 return Promise.resolve();
             }
             return Promise.reject(`${dir} has failed the folder checksum detection`);
-
         });
 
 module.exports = {calcDirHash, checkDirHash};

@@ -3,12 +3,14 @@ const express = require('express');
 const Emitter = require('events');
 const path = require('path');
 const fs = require('fs');
-const OpenBlockDevice = require('./device');
-const OpenBlockExtension = require('./extension');
 const locales = require('openblock-l10n').default;
 const {defaultsDeep} = require('lodash');
 const fetch = require('node-fetch');
 const http = require('http');
+const clc = require('cli-color');
+
+const OpenBlockDevice = require('./device');
+const OpenBlockExtension = require('./extension');
 
 /**
  * Configuration the default host.
@@ -44,7 +46,7 @@ const REOPEN_INTERVAL = 1000 * 1;
 /**
  * A server to provide local resource.
  */
-class OpenBlockResourceServer extends Emitter{
+class ResourceServer extends Emitter{
 
     /**
      * Construct a OpenBlock resource server object.
@@ -60,24 +62,31 @@ class OpenBlockResourceServer extends Emitter{
         this.extensions = new OpenBlockExtension();
         this.devices = new OpenBlockDevice();
 
-        let translations = {};
-
-        try {
-            translations = defaultsDeep(
-                {},
-                JSON.parse(fs.readFileSync(path.join(this._userDataPath, OFFICIAL_TRANSLATIONS_FILE), 'utf8')),
-                // JSON.parse(fs.readFileSync(path.join(this._userDataPath, THIRD_PARTY_TRANSLATIONS_FILE), 'utf8'))
-            );
-        } catch (e) {
-            this.emit('error', e);
-            console.error(`Can not find ${OFFICIAL_TRANSLATIONS_FILE} or ${THIRD_PARTY_TRANSLATIONS_FILE} in path: ${this._userDataPath}, please check user data path.`); // eslint-disable-line max-len
-        }
-
         this._formatMessage = {};
         this.deviceIndexData = {};
         this.extensionsIndexData = {};
+    }
 
-        // Prepare data in advance to speed up data transmission
+    // Prepare data in advance to speed up data transmission
+    generateCache () {
+        let officialTranslations;
+        let thirdPartyTranslations;
+
+        try {
+            officialTranslations = JSON.parse(fs.readFileSync(path.join(this._userDataPath, OFFICIAL_TRANSLATIONS_FILE), 'utf8')); // eslint-disable-line max-len
+            thirdPartyTranslations = JSON.parse(fs.readFileSync(path.join(this._userDataPath, THIRD_PARTY_TRANSLATIONS_FILE), 'utf8')); // eslint-disable-line max-len
+
+        } catch (e) {
+            console.error(clc.red(`ERR!: ${e}`)); // eslint-disable-line max-len
+            this.emit('error', e);
+        }
+
+        const translations = defaultsDeep(
+            {},
+            officialTranslations,
+            thirdPartyTranslations
+        );
+
         Object.keys(locales).forEach(locale => {
             this._formatMessage[`${locale}`] = formatMessage.namespace();
             this._formatMessage[`${locale}`].setup({
@@ -120,6 +129,8 @@ class OpenBlockResourceServer extends Emitter{
             this._host = host;
         }
 
+        this.generateCache();
+
         this._app = express();
         this._server = http.createServer(this._app);
 
@@ -154,25 +165,27 @@ class OpenBlockResourceServer extends Emitter{
 
         this._server.listen(this._port, this._host, () => {
             this.emit('ready');
-            console.log(`\x1B[32mOpenblock resource server start successfully\nSocket server listend: http://${this._host}:${this._port}\x1B[0m`);
+
+            // socket server listen on the same port
+            console.log(clc.green(`Openblock resource server start successfully, socket listen on: http://${this._host}:${this._port}`));
         })
             .on('error', e => {
                 this.isCurrentServer('127.0.0.1', this._port).then(isCurrent => {
                     if (isCurrent) {
-                        this.emit('port-in-use');
-                        console.log(`Port is already used by other openblock-resource server, try reopening after another ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
+                        console.log(`Port is already used by other openblock-resource server, will try reopening after ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
                         setTimeout(() => {
                             this._server.close();
                             this._server.listen(this._port, this._host);
                         }, REOPEN_INTERVAL);
+                        this.emit('port-in-use');
                     } else {
-                        const info = `Error while trying to listen port ${this._port}: ${e}`;
+                        const info = `ERR!: error while trying to listen port ${this._port}: ${e}`;
+                        console.error(clc.red(info));
                         this.emit('error', info);
-                        console.error(info);
                     }
                 });
             });
     }
 }
 
-module.exports = OpenBlockResourceServer;
+module.exports = ResourceServer;

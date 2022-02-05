@@ -1,4 +1,5 @@
 const OpenblockResourceServer = require('../index');
+const clc = require('cli-color');
 
 const resourceServer = new OpenblockResourceServer();
 
@@ -9,15 +10,15 @@ resourceServer.checkUpdate()
         if (info.upgradeble) {
             resourceServer.upgrade(console.log)
                 .then(() => {
-                    console.log('upgrade success');
+                    console.log(clc.green('\nUpgrade success'));
                 })
                 .catch(err => {
-                    console.error('upgrade failed:', err);
+                    console.error(clc.red(`ERR!: upgrade failed: ${err}`));
                 });
         } else {
             console.log('No need to upgrade.');
         }
     })
     .catch(err => {
-        console.log('check update failed:', err);
+        console.error(clc.red(`ERR!: Check update failed: ${err}`));
     });

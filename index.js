@@ -2,12 +2,14 @@ const fs = require('fs-extra');
 const Emitter = require('events');
 const path = require('path');
 const compareVersions = require('compare-versions');
+const clc = require('cli-color');
 
 const ResourceServer = require('./src/server');
 const ResourceUpgrader = require('./src/upgrader');
 const {DIRECTORY_NAME, DEFAULT_USER_DATA_PATH, DEFAULT_LOCALE} = require('./src/config');
 const {checkDirHash} = require('./src/calc-dir-hash');
 const {INIT_RESOURCES_STEP} = require('./src/state');
+const getConfigHash = require('./src/get-config-hash');
 
 
 class OpenblockResourceServer extends Emitter{
@@ -35,13 +37,17 @@ class OpenblockResourceServer extends Emitter{
     }
 
     checkResources () {
-        const checksumFile = path.resolve(this._userDataPath, 'folder-checksum-sha256.txt');
-
-        if (!fs.existsSync(checksumFile)){
-            return Promise.reject(`Cannot find checksum file: ${checksumFile}`);
+        if (!fs.existsSync(this._configPath)){
+            return Promise.reject(`Cannot find config file: ${this._configPath}`);
         }
 
-        const dirHash = fs.readFileSync(checksumFile, 'utf8');
+        const dirHash = getConfigHash(this._configPath);
+
+        // If no hash value in config file, report a warning but don't stop the process.
+        if (!dirHash) {
+            console.warn(clc.yellow(`WARN: no hash value found in ${this._configPath}`));
+            return Promise.resolve();
+        }
 
         return checkDirHash(this._userDataPath, dirHash);
     }
@@ -55,7 +61,7 @@ class OpenblockResourceServer extends Emitter{
             this.checkResources()
                 .then(() => resolve())
                 .catch(e => {
-                    console.log(`Warning: Check resources failed, try to initial resources: ${e}`);
+                    console.log(clc.yellow(`WARN: Check resources failed, try to initial resources: ${e}`));
                     if (fs.existsSync(this._userDataPath)){
                         fs.rmSync(this._userDataPath, {recursive: true, force: true});
                     }
@@ -78,7 +84,13 @@ class OpenblockResourceServer extends Emitter{
     }
 
     checkUpdate () {
-        const config = JSON.parse(fs.readFileSync(this._configPath, 'utf8'));
+        let config;
+
+        try {
+            config = JSON.parse(fs.readFileSync(this._configPath, 'utf8'));
+        } catch (e) {
+            return Promise.reject(e);
+        }
 
         if (!this.upgrader) {
             this.upgrader = new ResourceUpgrader(config.repo, config.cdn, path.dirname(this._userDataPath));
