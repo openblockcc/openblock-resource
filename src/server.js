@@ -165,8 +165,6 @@ class ResourceServer extends Emitter{
 
         this._server.listen(this._port, this._host, () => {
             this.emit('ready');
-
-            // socket server listen on the same port
             console.log(clc.green(`Openblock resource server start successfully, socket listen on: http://${this._host}:${this._port}`));
         })
             .on('error', e => {
