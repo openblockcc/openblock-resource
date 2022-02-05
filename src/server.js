@@ -22,14 +22,7 @@ const DEFAULT_HOST = '0.0.0.0';
  * Configuration the default port.
  * @readonly
  */
-const DEFAULT_PORT = 20120;
-
-/**
- * Translate file name.
- * @readonly
- */
-const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
-const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
+const DEFAULT_PORT = 20112;
 
 /**
  * Server name, ues in root path.
@@ -42,6 +35,13 @@ const SERVER_NAME = 'openblock-resource-server';
  * @readonly
  */
 const REOPEN_INTERVAL = 1000 * 1;
+
+/**
+ * Translate file name.
+ * @readonly
+ */
+const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
+const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
 
 /**
  * A server to provide local resource.
@@ -102,7 +102,7 @@ class ResourceServer extends Emitter{
         });
     }
 
-    isCurrentServer (host, port) {
+    isSameServer (host, port) {
         return new Promise((resolve, reject) => {
             fetch(`http://${host}:${port}`)
                 .then(res => res.text())
@@ -170,8 +170,8 @@ class ResourceServer extends Emitter{
             console.log(clc.green(`Openblock resource server start successfully, socket listen on: http://${this._host}:${this._port}`));
         })
             .on('error', e => {
-                this.isCurrentServer('127.0.0.1', this._port).then(isCurrent => {
-                    if (isCurrent) {
+                this.isSameServer('127.0.0.1', this._port).then(isSame => {
+                    if (isSame) {
                         console.log(`Port is already used by other openblock-resource server, will try reopening after ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
                         setTimeout(() => {
                             this._server.close();
