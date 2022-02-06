@@ -1,4 +1,3 @@
-const Emitter = require('events');
 const fs = require('fs-extra');
 const path = require('path');
 const request = require('request');
@@ -16,10 +15,14 @@ const {formatTime} = require('./format');
 const {DIRECTORY_NAME} = require('./config');
 const getConfigHash = require('./get-config-hash');
 
-class ResourceUpgrader extends Emitter{
-    constructor (repo, cdn, workDir) {
-        super();
+/**
+ * Configuration the name of upgrade lock file.
+ * @readonly
+ */
+const LOCK_FILE = 'resource-upgrade.lock';
 
+class ResourceUpgrader {
+    constructor (repo, cdn, workDir) {
         this._repo = repo;
         this._cdn = cdn;
         this._workDir = workDir;
@@ -40,9 +43,18 @@ class ResourceUpgrader extends Emitter{
     }
 
     checkUpdate () {
+        if (this.isUpgrading()) {
+            const e = 'Resource is upgrading';
+            console.log(clc.yellow(e));
+            return Promise.reject(e);
+        }
+
+        this.setUpgrading(true);
         return new Promise((resolve, reject) => {
             this.getLatest(this._repo, this._cdn)
                 .then(info => {
+                    this.setUpgrading(false);
+
                     if (info.tag_name) {
                         const version = info.tag_name;
                         const message = parseMessage(info.body);
@@ -51,7 +63,10 @@ class ResourceUpgrader extends Emitter{
                     }
                     return reject(`Cannot get valid releases from: ${this._repo}`);
                 })
-                .catch(err => reject(err));
+                .catch(err => {
+                    this.setUpgrading(false);
+                    return reject(err);
+                });
         });
     }
 
@@ -82,11 +97,31 @@ class ResourceUpgrader extends Emitter{
         });
     }
 
+    setUpgrading (state) {
+        const lockFile = path.resolve(this._workDir, LOCK_FILE);
+        if (state) {
+            fs.ensureFileSync(lockFile);
+        } else {
+            fs.removeSync(lockFile);
+        }
+    }
+
+    isUpgrading () {
+        const lockFile = path.resolve(this._workDir, LOCK_FILE);
+        return fs.existsSync(lockFile);
+    }
+
     upgrade (version, callback) {
-        const downloadPath = path.resolve(this._workDir, 'download');
-        fs.ensureDirSync(downloadPath);
+        if (this.isUpgrading()) {
+            const e = 'Resource is upgrading';
+            console.log(clc.yellow(e));
+            return Promise.reject(e);
+        }
 
         const shortVersion = version.replace(/v/g, '');
+
+        const downloadPath = path.resolve(this._workDir, 'download');
+        fs.ensureDirSync(downloadPath);
 
         const resourceName = `external-resources-${shortVersion}.zip`;
         const resourceUrl = `https://github.com/openblockcc/external-resources-v2/releases/download/${version}/${resourceName}`;
@@ -95,6 +130,8 @@ class ResourceUpgrader extends Emitter{
         const checksumName = `${shortVersion}-checksums-sha256.txt`;
         const checksumUrl = `https://github.com/openblockcc/external-resources-v2/releases/download/${version}/${checksumName}`;
         const checksumPath = path.join(downloadPath, checksumName);
+
+        this.setUpgrading(true);
 
         // Step 1: download zip and checksun file.
         return this.download(resourceUrl, resourcePath, callback)
@@ -156,6 +193,7 @@ class ResourceUpgrader extends Emitter{
 
                             fs.rmSync(resourcePath, {recursive: true, force: true});
                             fs.rmSync(checksumPath, {recursive: true, force: true});
+                            this.setUpgrading(false);
                         })
                         .catch(err => {
                             // Step 6.2: if check failed, delete extracted directory.
@@ -166,10 +204,16 @@ class ResourceUpgrader extends Emitter{
                                 });
                             }
                             fs.rmSync(extractPath, {recursive: true, force: true});
+                            this.setUpgrading(false);
                             return Promise.reject(err);
                         });
                 }
+                this.setUpgrading(false);
                 return Promise.reject(`${resourcePath} has failed the checksum detection`);
+            })
+            .catch(err => {
+                this.setUpgrading(false);
+                return Promise.reject(err);
             });
     }
 }

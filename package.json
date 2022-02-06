@@ -6,7 +6,7 @@
   "scripts": {
     "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v2",
     "fetch:cdn": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v2 --cdn=https://cdn.openblock.cc",
-    "start": "node ./test/start.js",
+    "start": "node ./test/start-server.js",
     "clean": "rimraf external-resources dist translation download ../.openblockData/external-resources",
     "build:extension": "node script/generate-extension-page.js --url=https://openblockcc.github.io/external-resources/",
     "build:device": "node script/generate-device-page.js --url=https://openblockcc.github.io/external-resources/",
@@ -18,7 +18,9 @@
     "ext:i18n-push": "i18n-push --dir=external-resources",
     "ext:i18n-update": "i18n-update --dir=external-resources",
     "lint": "eslint ./",
-    "test:upgrade": "node test/upgrade.js"
+    "test:upgrade": "node test/upgrade.js",
+    "test:multi-upgrade": "node test/multi-upgrade.js",
+    "test:multi-server": "node test/multi-server.js"
   },
   "author": "ArthurZheng",
   "license": "MIT",
