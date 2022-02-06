@@ -164,10 +164,10 @@ class ResourceServer extends Emitter{
         });
 
         this._server.listen(this._port, this._host, () => {
-            this.emit('ready');
             console.log(clc.green(`Openblock resource server start successfully, socket listen on: http://${this._host}:${this._port}`));
+            this.emit('ready');
         })
-            .on('error', e => {
+            .on('error', err => {
                 this.isSameServer('127.0.0.1', this._port).then(isSame => {
                     if (isSame) {
                         console.log(`Port is already used by other openblock-resource server, will try reopening after ${REOPEN_INTERVAL} ms`); // eslint-disable-line max-len
@@ -177,7 +177,7 @@ class ResourceServer extends Emitter{
                         }, REOPEN_INTERVAL);
                         this.emit('port-in-use');
                     } else {
-                        const info = `ERR!: error while trying to listen port ${this._port}: ${e}`;
+                        const info = `ERR!: error while trying to listen port ${this._port}: ${err}`;
                         console.error(clc.red(info));
                         this.emit('error', info);
                     }
