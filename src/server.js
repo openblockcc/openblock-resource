@@ -6,7 +6,7 @@ const fs = require('fs');
 const locales = require('openblock-l10n').default;
 const {defaultsDeep} = require('lodash');
 const fetch = require('node-fetch');
-const http = require('http');
+const https = require('https');
 const clc = require('cli-color');
 
 const OpenBlockDevice = require('./device');
@@ -132,7 +132,11 @@ class ResourceServer extends Emitter{
         this.generateCache();
 
         this._app = express();
-        this._server = http.createServer(this._app);
+        this._server = https.createServer({
+            cert: fs.readFileSync(path.resolve(__dirname, '../certificates/cert.pem'), 'utf8'),
+            key: fs.readFileSync(path.resolve(__dirname, '../certificates/key.pem'), 'utf8')
+        },
+        this._app);
 
         this._app.use((req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
@@ -164,7 +168,7 @@ class ResourceServer extends Emitter{
         });
 
         this._server.listen(this._port, this._host, () => {
-            console.log(clc.green(`Openblock resource server start successfully, socket listen on: http://${this._host}:${this._port}`));
+            console.log(clc.green(`Openblock resource server start successfully, socket listen on: https://${this._host}:${this._port}`));
             this.emit('ready');
         })
             .on('error', err => {
