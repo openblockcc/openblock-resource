@@ -6,17 +6,16 @@ const clc = require('cli-color');
 
 const ResourceServer = require('./src/server');
 const ResourceUpgrader = require('./src/upgrader');
-const {DIRECTORY_NAME, DEFAULT_USER_DATA_PATH, DEFAULT_LOCALE} = require('./src/config');
 const {checkDirHash} = require('./src/calc-dir-hash');
 const {INIT_RESOURCES_STEP} = require('./src/state');
 const getConfigHash = require('./src/get-config-hash');
-
-/**
- * Configuration the name of initial resources lock file.
- * @readonly
- */
-const INIT_RESOURCE_LOCK_FILE = 'initial-resources.lock';
-
+const {
+    DIRECTORY_NAME,
+    DEFAULT_USER_DATA_PATH,
+    DEFAULT_LOCALE,
+    INIT_RESOURCE_LOCK_FILE,
+    RECHECK_INTERVAL
+} = require('./src/config');
 
 class OpenblockResourceServer extends Emitter{
     constructor (userDataPath, initialResourcesPath, locale = DEFAULT_LOCALE) {
@@ -78,8 +77,6 @@ class OpenblockResourceServer extends Emitter{
         }
 
         const copyResources = () => {
-            this.setInitialing(true);
-
             console.log(`copy ${this._resourcesPath} to ${this._userDataPath}`);
             if (callback) {
                 callback({phase: INIT_RESOURCES_STEP.copying});
@@ -94,10 +91,27 @@ class OpenblockResourceServer extends Emitter{
                 });
         };
 
+        const waitUntillInitialFinish = () => {
+            if (this.isInitialing()) {
+                setTimeout(() => {
+                    console.log(clc.yellow(`WARN: A resource initial process is already running, will recheck proccess state after ${RECHECK_INTERVAL} ms`)); // eslint-disable-line max-len
+                    waitUntillInitialFinish();
+                }, RECHECK_INTERVAL);
+            } else {
+                this.emit('initial-finish');
+            }
+        };
+
         if (this.isInitialing()) {
-            return Promise.reject('A resource initial process is already running');
+            waitUntillInitialFinish();
+            return new Promise(resolve => {
+                this.on('initial-finish', () => {
+                    resolve();
+                });
+            });
         }
 
+        this.setInitialing(true);
         return this.checkResources()
             .catch(e => {
                 console.log(clc.yellow(`WARN: Check resources failed, try to initial resources: ${e}`));

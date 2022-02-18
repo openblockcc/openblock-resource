@@ -11,37 +11,14 @@ const clc = require('cli-color');
 
 const OpenBlockDevice = require('./device');
 const OpenBlockExtension = require('./extension');
-
-/**
- * Configuration the default host.
- * @readonly
- */
-const DEFAULT_HOST = '0.0.0.0';
-
-/**
- * Configuration the default port.
- * @readonly
- */
-const DEFAULT_PORT = 20112;
-
-/**
- * Server name, ues in root path.
- * @readonly
- */
-const SERVER_NAME = 'openblock-resource-server';
-
-/**
- * The time interval for retrying to open the port after the port is occupied by another openblock-resource server.
- * @readonly
- */
-const REOPEN_INTERVAL = 1000 * 1;
-
-/**
- * Translate file name.
- * @readonly
- */
-const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
-const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
+const {
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    SERVER_NAME,
+    REOPEN_INTERVAL,
+    OFFICIAL_TRANSLATIONS_FILE,
+    THIRD_PARTY_TRANSLATIONS_FILE
+} = require('./config');
 
 /**
  * A server to provide local resource.

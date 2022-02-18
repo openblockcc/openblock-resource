@@ -12,14 +12,8 @@ const clc = require('cli-color');
 const {UPGRADE_STEP, CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
 const {formatTime} = require('./format');
-const {DIRECTORY_NAME} = require('./config');
+const {UPGRADE_LOCK_FILE, DIRECTORY_NAME} = require('./config');
 const getConfigHash = require('./get-config-hash');
-
-/**
- * Configuration the name of upgrade lock file.
- * @readonly
- */
-const UPGRADE_LOCK_FILE = 'resource-upgrade.lock';
 
 class ResourceUpgrader {
     constructor (repo, cdn, workDir) {
