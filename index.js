@@ -57,7 +57,7 @@ class OpenblockResourceServer extends Emitter{
         return checkDirHash(this._userDataPath, dirHash);
     }
 
-    setInitialing (state) {
+    setInitializing (state) {
         const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
         if (state) {
             fs.ensureFileSync(lockFile);
@@ -66,12 +66,12 @@ class OpenblockResourceServer extends Emitter{
         }
     }
 
-    isInitialing () {
+    isInitializing () {
         const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
         return fs.existsSync(lockFile);
     }
 
-    initialResources (callback = null) {
+    initializeResources (callback = null) {
         if (callback) {
             callback({phase: INIT_RESOURCES_STEP.checking});
         }
@@ -86,35 +86,38 @@ class OpenblockResourceServer extends Emitter{
             return fs.mkdirs(this._userDataPath)
                 .then(() => fs.copy(this._resourcesPath, this._userDataPath))
                 .then(() => {
-                    this.setInitialing(false);
+                    this.setInitializing(false);
                     return this.checkResources();
                 });
         };
 
-        const waitUntillInitialFinish = () => {
-            if (this.isInitialing()) {
+        const waitUntillInitializeFinish = () => {
+            if (this.isInitializing()) {
                 setTimeout(() => {
-                    console.log(clc.yellow(`WARN: A resource initial process is already running, will recheck proccess state after ${RECHECK_INTERVAL} ms`)); // eslint-disable-line max-len
-                    waitUntillInitialFinish();
+                    console.log(clc.yellow(`WARN: A resource initialize process is already running, will recheck proccess state after ${RECHECK_INTERVAL} ms`)); // eslint-disable-line max-len
+                    waitUntillInitializeFinish();
                 }, RECHECK_INTERVAL);
             } else {
-                this.emit('initial-finish');
+                this.emit('initialize-finish');
             }
         };
 
-        if (this.isInitialing()) {
-            waitUntillInitialFinish();
+        if (this.isInitializing()) {
+            waitUntillInitializeFinish();
             return new Promise(resolve => {
-                this.on('initial-finish', () => {
+                this.on('initialize-finish', () => {
                     resolve();
                 });
             });
         }
 
-        this.setInitialing(true);
+        this.setInitializing(true);
         return this.checkResources()
+            .then(() => {
+                this.setInitializing(false);
+            })
             .catch(e => {
-                console.log(clc.yellow(`WARN: Check resources failed, try to initial resources: ${e}`));
+                console.log(clc.yellow(`WARN: Check resources failed, try to initialize resources: ${e}`));
                 if (fs.existsSync(this._userDataPath)){
                     return fs.rm(this._userDataPath, {recursive: true, force: true})
                         .then(() => copyResources());

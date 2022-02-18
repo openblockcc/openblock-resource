@@ -118,11 +118,11 @@ class ResourceUpgrader {
         fs.ensureDirSync(downloadPath);
 
         const resourceName = `external-resources-${shortVersion}.zip`;
-        const resourceUrl = `https://github.com/openblockcc/external-resources-v2/releases/download/${version}/${resourceName}`;
+        const resourceUrl = `https://github.com/${this._repo}/releases/download/${version}/${resourceName}`;
         const resourcePath = path.join(downloadPath, resourceName);
 
         const checksumName = `${shortVersion}-checksums-sha256.txt`;
-        const checksumUrl = `https://github.com/openblockcc/external-resources-v2/releases/download/${version}/${checksumName}`;
+        const checksumUrl = `https://github.com/${this._repo}/releases/download/${version}/${checksumName}`;
         const checksumPath = path.join(downloadPath, checksumName);
 
         this.setUpgrading(true);

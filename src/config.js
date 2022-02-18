@@ -56,10 +56,10 @@ const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
 const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
 
 /**
- * Configuration the name of initial resources lock file.
+ * Configuration the name of initialize resources lock file.
  * @readonly
  */
-const INIT_RESOURCE_LOCK_FILE = 'initial-resources.lock';
+const INIT_RESOURCE_LOCK_FILE = 'initialize-resources.lock';
 
 /**
  * The time interval for recheck the state of initial
