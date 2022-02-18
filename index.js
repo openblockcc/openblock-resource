@@ -53,34 +53,31 @@ class OpenblockResourceServer extends Emitter{
     }
 
     initialResources (callback = null) {
-        return new Promise((resolve, reject) => {
+        if (callback) {
+            callback({phase: INIT_RESOURCES_STEP.checking});
+        }
+
+        const copyResources = () => {
+            console.log(`copy ${this._resourcesPath} to ${this._userDataPath}`);
             if (callback) {
-                callback({phase: INIT_RESOURCES_STEP.checking});
+                callback({phase: INIT_RESOURCES_STEP.copying});
             }
 
-            this.checkResources()
-                .then(() => resolve())
-                .catch(e => {
-                    console.log(clc.yellow(`WARN: Check resources failed, try to initial resources: ${e}`));
-                    if (fs.existsSync(this._userDataPath)){
-                        fs.rmSync(this._userDataPath, {recursive: true, force: true});
-                    }
+            // copy the initial resources to user data directory
+            return fs.mkdirs(this._userDataPath)
+                .then(() => fs.copy(this._resourcesPath, this._userDataPath))
+                .then(() => this.checkResources());
+        };
 
-                    console.log(`copy ${this._resourcesPath} to ${this._userDataPath}`);
-                    if (callback) {
-                        callback({phase: INIT_RESOURCES_STEP.copying});
-                    }
-
-                    // copy the initial resources to user data directory
-                    fs.mkdirsSync(this._userDataPath);
-                    fs.copySync(this._resourcesPath, this._userDataPath);
-
-                    // check the integrity of the initial resources
-                    this.checkResources()
-                        .then(resolve)
-                        .catch(reject);
-                });
-        });
+        return this.checkResources()
+            .catch(e => {
+                console.log(clc.yellow(`WARN: Check resources failed, try to initial resources: ${e}`));
+                if (fs.existsSync(this._userDataPath)){
+                    return fs.rm(this._userDataPath, {recursive: true, force: true})
+                        .then(() => copyResources());
+                }
+                return copyResources();
+            });
     }
 
     checkUpdate () {
