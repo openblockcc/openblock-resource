@@ -11,6 +11,12 @@ const {checkDirHash} = require('./src/calc-dir-hash');
 const {INIT_RESOURCES_STEP} = require('./src/state');
 const getConfigHash = require('./src/get-config-hash');
 
+/**
+ * Configuration the name of initial resources lock file.
+ * @readonly
+ */
+const INIT_RESOURCE_LOCK_FILE = 'initial-resources.lock';
+
 
 class OpenblockResourceServer extends Emitter{
     constructor (userDataPath, initialResourcesPath, locale = DEFAULT_LOCALE) {
@@ -52,12 +58,28 @@ class OpenblockResourceServer extends Emitter{
         return checkDirHash(this._userDataPath, dirHash);
     }
 
+    setInitialing (state) {
+        const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
+        if (state) {
+            fs.ensureFileSync(lockFile);
+        } else {
+            fs.removeSync(lockFile);
+        }
+    }
+
+    isInitialing () {
+        const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
+        return fs.existsSync(lockFile);
+    }
+
     initialResources (callback = null) {
         if (callback) {
             callback({phase: INIT_RESOURCES_STEP.checking});
         }
 
         const copyResources = () => {
+            this.setInitialing(true);
+
             console.log(`copy ${this._resourcesPath} to ${this._userDataPath}`);
             if (callback) {
                 callback({phase: INIT_RESOURCES_STEP.copying});
@@ -66,8 +88,15 @@ class OpenblockResourceServer extends Emitter{
             // copy the initial resources to user data directory
             return fs.mkdirs(this._userDataPath)
                 .then(() => fs.copy(this._resourcesPath, this._userDataPath))
-                .then(() => this.checkResources());
+                .then(() => {
+                    this.setInitialing(false);
+                    return this.checkResources();
+                });
         };
+
+        if (this.isInitialing()) {
+            return Promise.reject('A resource initial process is already running');
+        }
 
         return this.checkResources()
             .catch(e => {

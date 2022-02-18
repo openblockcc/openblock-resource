@@ -103,8 +103,12 @@ class ResourceServer extends Emitter{
     }
 
     isSameServer (host, port) {
+        const agent = new https.Agent({
+            rejectUnauthorized: false
+        });
+
         return new Promise((resolve, reject) => {
-            fetch(`http://${host}:${port}`)
+            fetch(`https://${host}:${port}`, {agent})
                 .then(res => res.text())
                 .then(text => {
                     if (text === SERVER_NAME) {

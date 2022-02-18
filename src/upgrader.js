@@ -19,7 +19,7 @@ const getConfigHash = require('./get-config-hash');
  * Configuration the name of upgrade lock file.
  * @readonly
  */
-const LOCK_FILE = 'resource-upgrade.lock';
+const UPGRADE_LOCK_FILE = 'resource-upgrade.lock';
 
 class ResourceUpgrader {
     constructor (repo, cdn, workDir) {
@@ -98,7 +98,7 @@ class ResourceUpgrader {
     }
 
     setUpgrading (state) {
-        const lockFile = path.resolve(this._workDir, LOCK_FILE);
+        const lockFile = path.resolve(this._workDir, UPGRADE_LOCK_FILE);
         if (state) {
             fs.ensureFileSync(lockFile);
         } else {
@@ -107,13 +107,13 @@ class ResourceUpgrader {
     }
 
     isUpgrading () {
-        const lockFile = path.resolve(this._workDir, LOCK_FILE);
+        const lockFile = path.resolve(this._workDir, UPGRADE_LOCK_FILE);
         return fs.existsSync(lockFile);
     }
 
     upgrade (version, callback) {
         if (this.isUpgrading()) {
-            const e = 'Resource is upgrading';
+            const e = 'A resource upgrader is already running';
             console.log(clc.yellow(e));
             return Promise.reject(e);
         }
