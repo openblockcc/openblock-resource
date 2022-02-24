@@ -8,11 +8,12 @@ const fetch = require('node-fetch');
 const parseMessage = require('openblock-parse-release-message');
 const byteSize = require('byte-size');
 const clc = require('cli-color');
+const lockFile = require('proper-lockfile');
 
 const {UPGRADE_STEP, CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
 const {formatTime} = require('./format');
-const {UPGRADE_LOCK_FILE, DIRECTORY_NAME} = require('./config');
+const {DIRECTORY_NAME} = require('./config');
 const getConfigHash = require('./get-config-hash');
 
 class ResourceUpgrader {
@@ -37,18 +38,15 @@ class ResourceUpgrader {
     }
 
     checkUpdate () {
-        if (this.isUpgrading()) {
+        if (lockFile.checkSync(this._workDir)) {
             const e = 'Resource is upgrading';
             console.log(clc.yellow(e));
             return Promise.reject(e);
         }
 
-        this.setUpgrading(true);
         return new Promise((resolve, reject) => {
             this.getLatest(this._repo, this._cdn)
                 .then(info => {
-                    this.setUpgrading(false);
-
                     if (info.tag_name) {
                         const version = info.tag_name;
                         const message = parseMessage(info.body);
@@ -57,10 +55,7 @@ class ResourceUpgrader {
                     }
                     return reject(`Cannot get valid releases from: ${this._repo}`);
                 })
-                .catch(err => {
-                    this.setUpgrading(false);
-                    return reject(err);
-                });
+                .catch(err => reject(err));
         });
     }
 
@@ -91,22 +86,8 @@ class ResourceUpgrader {
         });
     }
 
-    setUpgrading (state) {
-        const lockFile = path.resolve(this._workDir, UPGRADE_LOCK_FILE);
-        if (state) {
-            fs.ensureFileSync(lockFile);
-        } else {
-            fs.removeSync(lockFile);
-        }
-    }
-
-    isUpgrading () {
-        const lockFile = path.resolve(this._workDir, UPGRADE_LOCK_FILE);
-        return fs.existsSync(lockFile);
-    }
-
     upgrade (version, callback) {
-        if (this.isUpgrading()) {
+        if (lockFile.checkSync(this._workDir)) {
             const e = 'A resource upgrader is already running';
             console.log(clc.yellow(e));
             return Promise.reject(e);
@@ -125,7 +106,7 @@ class ResourceUpgrader {
         const checksumUrl = `https://github.com/${this._repo}/releases/download/${version}/${checksumName}`;
         const checksumPath = path.join(downloadPath, checksumName);
 
-        this.setUpgrading(true);
+        lockFile.lockSync(this._workDir);
 
         // Step 1: download zip and checksun file.
         return this.download(resourceUrl, resourcePath, callback)
@@ -187,7 +168,7 @@ class ResourceUpgrader {
 
                             fs.rmSync(resourcePath, {recursive: true, force: true});
                             fs.rmSync(checksumPath, {recursive: true, force: true});
-                            this.setUpgrading(false);
+                            lockFile.unlockSync(this._workDir);
                         })
                         .catch(err => {
                             // Step 6.2: if check failed, delete extracted directory.
@@ -198,15 +179,15 @@ class ResourceUpgrader {
                                 });
                             }
                             fs.rmSync(extractPath, {recursive: true, force: true});
-                            this.setUpgrading(false);
+                            lockFile.unlockSync(this._workDir);
                             return Promise.reject(err);
                         });
                 }
-                this.setUpgrading(false);
+                lockFile.unlockSync(this._workDir);
                 return Promise.reject(`${resourcePath} has failed the checksum detection`);
             })
             .catch(err => {
-                this.setUpgrading(false);
+                lockFile.unlockSync(this._workDir);
                 return Promise.reject(err);
             });
     }

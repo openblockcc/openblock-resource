@@ -1,12 +1,6 @@
 const path = require('path');
 
 /**
- * Configuration the name of upgrade lock file.
- * @readonly
- */
-const UPGRADE_LOCK_FILE = 'resource-upgrade.lock';
-
-/**
  * The name of reousce directory.
  * @readonly
  */
@@ -56,12 +50,6 @@ const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
 const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
 
 /**
- * Configuration the name of initialize resources lock file.
- * @readonly
- */
-const INIT_RESOURCE_LOCK_FILE = 'initialize-resources.lock';
-
-/**
  * The time interval for recheck the state of initial
  * @readonly
  */
@@ -69,7 +57,6 @@ const RECHECK_INTERVAL = 1000 * 1;
 
 
 module.exports = {
-    UPGRADE_LOCK_FILE,
     DIRECTORY_NAME,
     DEFAULT_USER_DATA_PATH,
     DEFAULT_LOCALE,
@@ -79,6 +66,5 @@ module.exports = {
     REOPEN_INTERVAL,
     OFFICIAL_TRANSLATIONS_FILE,
     THIRD_PARTY_TRANSLATIONS_FILE,
-    INIT_RESOURCE_LOCK_FILE,
     RECHECK_INTERVAL
 };

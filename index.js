@@ -3,6 +3,7 @@ const Emitter = require('events');
 const path = require('path');
 const compareVersions = require('compare-versions');
 const clc = require('cli-color');
+const lockFile = require('proper-lockfile');
 
 const ResourceServer = require('./src/server');
 const ResourceUpgrader = require('./src/upgrader');
@@ -13,7 +14,6 @@ const {
     DIRECTORY_NAME,
     DEFAULT_USER_DATA_PATH,
     DEFAULT_LOCALE,
-    INIT_RESOURCE_LOCK_FILE,
     RECHECK_INTERVAL
 } = require('./src/config');
 
@@ -57,24 +57,11 @@ class OpenblockResourceServer extends Emitter{
         return checkDirHash(this._userDataPath, dirHash);
     }
 
-    setInitializing (state) {
-        const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
-        if (state) {
-            fs.ensureFileSync(lockFile);
-        } else {
-            fs.removeSync(lockFile);
-        }
-    }
-
-    isInitializing () {
-        const lockFile = path.resolve(path.dirname(this._userDataPath), INIT_RESOURCE_LOCK_FILE);
-        return fs.existsSync(lockFile);
-    }
-
     initializeResources (callback = null) {
         if (callback) {
             callback({phase: INIT_RESOURCES_STEP.checking});
         }
+        fs.ensureDirSync(this._userDataPath);
 
         const copyResources = () => {
             console.log(`copy ${this._resourcesPath} to ${this._userDataPath}`);
@@ -86,13 +73,13 @@ class OpenblockResourceServer extends Emitter{
             return fs.mkdirs(this._userDataPath)
                 .then(() => fs.copy(this._resourcesPath, this._userDataPath))
                 .then(() => {
-                    this.setInitializing(false);
+                    lockFile.unlockSync(this._userDataPath);
                     return this.checkResources();
                 });
         };
 
         const waitUntillInitializeFinish = () => {
-            if (this.isInitializing()) {
+            if (lockFile.checkSync(this._userDataPath)) {
                 setTimeout(() => {
                     console.log(clc.yellow(`WARN: A resource initialize process is already running, will recheck proccess state after ${RECHECK_INTERVAL} ms`)); // eslint-disable-line max-len
                     waitUntillInitializeFinish();
@@ -102,7 +89,7 @@ class OpenblockResourceServer extends Emitter{
             }
         };
 
-        if (this.isInitializing()) {
+        if (lockFile.checkSync(this._userDataPath)) {
             waitUntillInitializeFinish();
             return new Promise(resolve => {
                 this.on('initialize-finish', () => {
@@ -111,10 +98,10 @@ class OpenblockResourceServer extends Emitter{
             });
         }
 
-        this.setInitializing(true);
+        lockFile.lockSync(this._userDataPath);
         return this.checkResources()
             .then(() => {
-                this.setInitializing(false);
+                lockFile.unlockSync(this._userDataPath);
             })
             .catch(e => {
                 console.log(clc.yellow(`WARN: Check resources failed, try to initialize resources: ${e}`));
