@@ -59,7 +59,7 @@ class OpenblockResourceServer extends Emitter{
 
     initializeResources (callback = null) {
         if (callback) {
-            callback({phase: INIT_RESOURCES_STEP.checking});
+            callback({phase: INIT_RESOURCES_STEP.verifying});
         }
         fs.ensureDirSync(this._userDataPath);
 

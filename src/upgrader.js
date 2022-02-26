@@ -10,7 +10,7 @@ const byteSize = require('byte-size');
 const clc = require('cli-color');
 const lockFile = require('proper-lockfile');
 
-const {UPGRADE_STEP, CONTENT} = require('./state');
+const {UPGRADE_STATE, UPGRADE_PROGRESS, UPGRADE_CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
 const {formatTime} = require('./format');
 const {DIRECTORY_NAME} = require('./config');
@@ -21,6 +21,8 @@ class ResourceUpgrader {
         this._repo = repo;
         this._cdn = cdn;
         this._workDir = workDir;
+
+        this.progress = 0; // 0 ~ 1
     }
 
     getLatest () {
@@ -63,12 +65,31 @@ class ResourceUpgrader {
         if (this._cdn) {
             url = `${this._cdn}/${url}`;
         }
+
+        if (callback) {
+            callback({
+                phase: UPGRADE_STATE.downloading,
+                progress: this.progress,
+                info: {
+                    name: path.basename(dest)
+                }
+            });
+        }
+
         return new Promise((resolve, reject) => {
             progress(request(url))
                 .on('progress', state => {
+                    if (this.progress >= UPGRADE_PROGRESS.start && this.progress < UPGRADE_PROGRESS.downloadResource) {
+                        this.progress = UPGRADE_PROGRESS.start +
+                            (state.percent * (UPGRADE_PROGRESS.downloadResource - UPGRADE_PROGRESS.start));
+                    } else {
+                        this.progress = UPGRADE_PROGRESS.downloadResource +
+                            (state.percent * (UPGRADE_PROGRESS.downloadChecksum - UPGRADE_PROGRESS.downloadResource));
+                    }
                     if (callback) {
                         callback({
-                            phase: UPGRADE_STEP.downloading,
+                            phase: UPGRADE_STATE.downloading,
+                            progress: this.progress,
                             info: {
                                 name: path.basename(dest),
                                 percent: state.percent, // 0 ~ 1
@@ -108,15 +129,25 @@ class ResourceUpgrader {
 
         lockFile.lockSync(this._workDir);
 
+        this.progress = UPGRADE_PROGRESS.start;
+        if (callback) {
+            callback({
+                phase: UPGRADE_STATE.downloading,
+                progress: this.progress
+            });
+        }
+
         // Step 1: download zip and checksun file.
         return this.download(resourceUrl, resourcePath, callback)
             .then(() => this.download(checksumUrl, checksumPath, callback))
             .then(() => {
                 // Step 2: check checksum of zip.
+                this.progress = UPGRADE_PROGRESS.verifyZip;
                 if (callback){
                     callback({
-                        phase: UPGRADE_STEP.checking,
-                        info: {name: CONTENT.downloadedFile}
+                        phase: UPGRADE_STATE.verifying,
+                        progress: this.progress,
+                        info: {name: UPGRADE_CONTENT.zip}
                     });
                 }
                 const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split('  ')[0];
@@ -125,27 +156,33 @@ class ResourceUpgrader {
                 if (zipChecksum === hash) {
                     // Step 3: delete old directory.
                     const extractPath = path.resolve(this._workDir, DIRECTORY_NAME);
+                    this.progress = UPGRADE_PROGRESS.deletCache;
                     if (callback) {
                         callback({
-                            phase: UPGRADE_STEP.deleting,
-                            info: {name: CONTENT.userDirectory}
+                            phase: UPGRADE_STATE.deleting,
+                            progress: this.progress,
+                            info: {name: UPGRADE_CONTENT.cache}
                         });
                     }
                     fs.rmSync(extractPath, {recursive: true, force: true});
 
                     // Step 4: extract zip.
+                    this.progress = UPGRADE_PROGRESS.extractZip;
                     if (callback) {
                         callback({
-                            phase: UPGRADE_STEP.extracting
+                            phase: UPGRADE_STATE.extracting,
+                            progress: this.progress
                         });
                     }
                     return extract(resourcePath, {dir: extractPath})
                         .then(() => {
                             // Step 5: check checksum of extracted directory.
+                            this.progress = UPGRADE_PROGRESS.verifyCache;
                             if (callback) {
                                 callback({
-                                    phase: UPGRADE_STEP.checking,
-                                    info: {name: CONTENT.userDirectory}
+                                    phase: UPGRADE_STATE.verifying,
+                                    progress: this.progress,
+                                    info: {name: UPGRADE_CONTENT.cache}
                                 });
                             }
 
@@ -159,10 +196,12 @@ class ResourceUpgrader {
                         })
                         .then(() => {
                             // Step 6.1: delete downloaded files.
+                            this.progress = UPGRADE_PROGRESS.deletZip;
                             if (callback) {
                                 callback({
-                                    phase: UPGRADE_STEP.deleting,
-                                    info: {name: CONTENT.downloadedFile}
+                                    phase: UPGRADE_STATE.deleting,
+                                    progress: this.progress,
+                                    info: {name: UPGRADE_CONTENT.zip}
                                 });
                             }
 
@@ -174,8 +213,9 @@ class ResourceUpgrader {
                             // Step 6.2: if check failed, delete extracted directory.
                             if (callback) {
                                 callback({
-                                    phase: UPGRADE_STEP.deleting,
-                                    info: {name: CONTENT.userDirectory}
+                                    phase: UPGRADE_STATE.deleting,
+                                    progress: this.progress,
+                                    info: {name: UPGRADE_CONTENT.cache}
                                 });
                             }
                             fs.rmSync(extractPath, {recursive: true, force: true});
