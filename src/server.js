@@ -44,8 +44,12 @@ class ResourceServer extends Emitter{
         this.extensionsIndexData = {};
     }
 
-    // Prepare data in advance to speed up data transmission
-    generateCache () {
+    // If the 18n cache is not exist, generate it.
+    generate18nCache (locale) {
+        if (this.deviceIndexData[`${locale}`] && this.extensionsIndexData[`${locale}`]) {
+            return;
+        }
+
         let officialTranslations;
         let thirdPartyTranslations;
 
@@ -64,19 +68,20 @@ class ResourceServer extends Emitter{
             thirdPartyTranslations
         );
 
-        Object.keys(locales).forEach(locale => {
-            this._formatMessage[`${locale}`] = formatMessage.namespace();
-            this._formatMessage[`${locale}`].setup({
-                locale: locale,
-                translations: translations
-            });
+        // // TODO: Generate and cache the data when the language is first request.
+        // Object.keys(locales).forEach(locale => {
+        this._formatMessage[`${locale}`] = formatMessage.namespace();
+        this._formatMessage[`${locale}`].setup({
+            locale: locale,
+            translations: translations
+        });
 
-            this.deviceIndexData[`${locale}`] =
+        this.deviceIndexData[`${locale}`] =
                 JSON.stringify(this.devices.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
 
-            this.extensionsIndexData[`${locale}`] =
+        this.extensionsIndexData[`${locale}`] =
                 JSON.stringify(this.extensions.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
-        });
+        // });
     }
 
     isSameServer (host, port) {
@@ -110,8 +115,6 @@ class ResourceServer extends Emitter{
             this._host = host;
         }
 
-        this.generateCache();
-
         this._app = express();
         this._server = https.createServer({
             cert: fs.readFileSync(path.resolve(__dirname, '../certificates/cert.pem'), 'utf8'),
@@ -142,8 +145,10 @@ class ResourceServer extends Emitter{
             }
 
             if (type === this.extensions.type) {
+                this.generate18nCache(locale);
                 res.send(this.extensionsIndexData[`${locale}`]);
             } else if (type === this.devices.type) {
+                this.generate18nCache(locale);
                 res.send(this.deviceIndexData[`${locale}`]);
             }
         });
