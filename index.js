@@ -6,7 +6,7 @@ const clc = require('cli-color');
 const lockFile = require('proper-lockfile');
 
 const ResourceServer = require('./src/server');
-const ResourceUpgrader = require('./src/upgrader');
+const ResourceUpdater = require('./src/updater');
 const {checkDirHash} = require('./src/calc-dir-hash');
 const {INIT_RESOURCES_STEP} = require('./src/state');
 const getConfigHash = require('./src/get-config-hash');
@@ -38,7 +38,7 @@ class OpenblockResourceServer extends Emitter{
         this._locale = locale;
 
         this._latestVersion = null;
-        this.upgrader = null;
+        this.updater = null;
     }
 
     checkResources () {
@@ -122,25 +122,25 @@ class OpenblockResourceServer extends Emitter{
             return Promise.reject(e);
         }
 
-        if (!this.upgrader) {
-            this.upgrader = new ResourceUpgrader(config.repo, config.cdn, path.dirname(this._userDataPath));
+        if (!this.updater) {
+            this.updater = new ResourceUpdater(config.repo, config.cdn, path.dirname(this._userDataPath));
         }
 
-        return this.upgrader.checkUpdate(option)
+        return this.updater.checkUpdate(option)
             .then(info => {
                 info.currentVersion = config.version;
                 if (compareVersions(info.latestVersion, info.currentVersion) > 0) {
-                    info.upgradeble = true;
+                    info.updateble = true;
                 } else {
-                    info.upgradeble = false;
+                    info.updateble = false;
                 }
                 this._latestVersion = info.latestVersion;
                 return info;
             });
     }
 
-    upgrade (option) {
-        return this.upgrader.upgrade(this._latestVersion, option);
+    update (option) {
+        return this.updater.update(this._latestVersion, option);
     }
 
     listen (port = null) {

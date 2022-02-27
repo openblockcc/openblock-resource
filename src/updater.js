@@ -15,7 +15,7 @@ const {formatTime} = require('./format');
 const {DIRECTORY_NAME} = require('./config');
 const getConfigHash = require('./get-config-hash');
 
-class ResourceUpgrader {
+class ResourceUpdater {
     constructor (repo, cdn, workDir) {
         this._repo = repo;
         this._cdn = cdn;
@@ -134,13 +134,13 @@ class ResourceUpgrader {
         return Promise.reject(err);
     }
 
-    upgrade (version, option = {}) {
+    update (version, option = {}) {
         if (!option.signal) {
             option.signal = this.fakeSignal;
         }
 
         if (lockFile.checkSync(this._workDir)) {
-            const e = 'A resource upgrader is already running';
+            const e = 'A resource updater is already running';
             console.log(clc.yellow(e));
             return Promise.reject(e);
         }
@@ -266,4 +266,4 @@ class ResourceUpgrader {
     }
 }
 
-module.exports = ResourceUpgrader;
+module.exports = ResourceUpdater;

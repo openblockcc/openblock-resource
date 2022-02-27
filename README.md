@@ -15,7 +15,7 @@ Provide a local resource server for openblock.
     npm start
     ```
 
-- Test upgrade funciton, run:
+- Test update funciton, run:
 
     ```bash
     npm test

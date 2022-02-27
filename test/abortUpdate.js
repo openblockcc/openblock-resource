@@ -16,20 +16,20 @@ const report = res => {
     }
 };
 
-// Test the upgrade abort funciton.
+// Test the update abort funciton.
 resourceServer.checkUpdate({signal: controller.signal})
     .then(info => {
         console.log('check update info:', info);
-        if (info.upgradeble) {
-            resourceServer.upgrade({signal: controller.signal, callback: report})
+        if (info.updateble) {
+            resourceServer.update({signal: controller.signal, callback: report})
                 .then(() => {
-                    console.log(clc.green('\nUpgrade success'));
+                    console.log(clc.green('\nUpdate success'));
                 })
                 .catch(err => {
-                    console.error(clc.red(`ERR!: upgrade failed: ${err}`));
+                    console.error(clc.red(`ERR!: update failed: ${err}`));
                 });
         } else {
-            console.log('No need to upgrade.');
+            console.log('No need to update.');
         }
     })
     .catch(err => {

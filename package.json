@@ -18,12 +18,12 @@
     "ext:i18n-push": "i18n-push --dir=external-resources",
     "ext:i18n-update": "i18n-update --dir=external-resources",
     "lint": "eslint ./",
-    "test:upgrade": "node test/upgrade.js",
-    "test:multi-upgrade": "node test/multi-upgrade.js",
+    "test:update": "node test/update.js",
+    "test:multi-update": "node test/multi-update.js",
     "test:multi-server": "node test/multi-server.js",
     "test:multi-init": "rimraf ../.openblockData/external-resources && node test/multi-initial.js",
     "test:abort-check": "node test/abortCheckUpdate.js",
-    "test:abort-update": "node test/abortDoUpdate.js"
+    "test:abort-update": "node test/abortUpdate.js"
   },
   "author": "ArthurZheng",
   "license": "MIT",
