@@ -9,7 +9,7 @@ const UPGRADE_STATE = keyMirror({
 });
 
 const UPGRADE_PROGRESS = {
-    start: 0.05,
+    start: 0.10,
     downloadResource: 0.75,
     downloadChecksum: 0.77,
     verifyZip: 0.80,
