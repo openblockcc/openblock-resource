@@ -113,7 +113,7 @@ class OpenblockResourceServer extends Emitter{
             });
     }
 
-    checkUpdate () {
+    checkUpdate (option) {
         let config;
 
         try {
@@ -126,7 +126,7 @@ class OpenblockResourceServer extends Emitter{
             this.upgrader = new ResourceUpgrader(config.repo, config.cdn, path.dirname(this._userDataPath));
         }
 
-        return this.upgrader.checkUpdate()
+        return this.upgrader.checkUpdate(option)
             .then(info => {
                 info.currentVersion = config.version;
                 if (compareVersions(info.latestVersion, info.currentVersion) > 0) {
@@ -139,8 +139,8 @@ class OpenblockResourceServer extends Emitter{
             });
     }
 
-    upgrade (callback = null) {
-        return this.upgrader.upgrade(this._latestVersion, callback);
+    upgrade (option) {
+        return this.upgrader.upgrade(this._latestVersion, option);
     }
 
     listen (port = null) {

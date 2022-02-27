@@ -9,13 +9,11 @@
 const path = require('path');
 const fs = require('fs-extra');
 const fetch = require('node-fetch');
-const request = require('request');
-const progress = require('request-progress');
 const ProgressBar = require('progress');
 const extract = require('extract-zip');
 const hashFiles = require('hash-files');
-const byteSize = require('byte-size');
 const clc = require('cli-color');
+const Progress = require('node-fetch-progress');
 
 const {checkDirHash} = require('../src/calc-dir-hash');
 const {formatTime} = require('../src/format');
@@ -61,30 +59,37 @@ const download = (url, dest) => {
         });
 
         console.log('download from url:', url);
-        progress(request(url))
-            .on('progress', state => {
-                const tokenSpeed = `${byteSize(state.speed)}/s`;
-                const tokenSize = `${byteSize(state.size.transferred)}/${byteSize(state.size.total)}`; // eslint-disable-line max-len
-                const tokenRemaining = formatTime(state.time.remaining);
 
-                bar.update(state.percent, {
-                    tokenSpeed: tokenSpeed,
-                    tokenSize: tokenSize,
-                    tokenRemaining: tokenRemaining
+        fetch(url)
+            .then(res => {
+                if (res.status !== 200) {
+                    return reject(`Got status code ${res.status}: ${res.statusText}`);
+                }
+                const fileStream = fs.createWriteStream(dest);
+
+                res.body.pipe(fileStream);
+                res.body.on('error', err => {
+                    bar.terminate();
+                    return reject(err);
+                });
+
+                fileStream.on('finish', () => {
+                    bar.update(1);
+                    console.log(`${path.basename(dest)} download complete`);
+                    return resolve();
+                });
+
+                const progress = new Progress(res, {throttle: 100});
+
+                progress.on('progress', state => {
+                    bar.update(state.progress, {
+                        tokenSpeed: state.rateh,
+                        tokenSize: `${state.doneh}/${state.totalh}`,
+                        tokenRemaining: formatTime(state.eta)
+                    });
                 });
             })
-            .on('error', err => {
-                bar.terminate();
-                return reject(err);
-            })
-            .on('end', () => {
-                bar.update(1);
-                const destSplit = dest.split(/[\\/]/);
-                const fileName = destSplit[destSplit.length - 1];
-                console.log(`${fileName} download complete`);
-                return resolve();
-            })
-            .pipe(fs.createWriteStream(dest));
+            .catch(err => reject(err));
     });
 };
 
@@ -156,4 +161,4 @@ getLatest()
             });
 
     })
-    .catch(err => console.log('err+', err));
+    .catch(err => console.log(clc.red(`ERR!: ${err}`)));

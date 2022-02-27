@@ -21,12 +21,13 @@
     "test:upgrade": "node test/upgrade.js",
     "test:multi-upgrade": "node test/multi-upgrade.js",
     "test:multi-server": "node test/multi-server.js",
-    "test:multi-init": "rimraf ../.openblockData/external-resources && node test/multi-initial.js"
+    "test:multi-init": "rimraf ../.openblockData/external-resources && node test/multi-initial.js",
+    "test:abort-check": "node test/abortCheckUpdate.js",
+    "test:abort-update": "node test/abortDoUpdate.js"
   },
   "author": "ArthurZheng",
   "license": "MIT",
   "dependencies": {
-    "byte-size": "^8.1.0",
     "cli-color": "^2.0.1",
     "compare-versions": "^3.6.0",
     "express": "^4.17.1",
@@ -37,12 +38,12 @@
     "hash-files": "^1.1.1",
     "keymirror": "^0.1.1",
     "lodash": "^4.17.21",
+    "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.7",
+    "node-fetch-progress": "^1.0.2",
     "openblock-l10n": "^3.10.20220105060755",
     "openblock-parse-release-message": "0.0.1",
     "proper-lockfile": "^4.1.2",
-    "request": "^2.88.2",
-    "request-progress": "^3.0.0",
     "require-all": "^3.0.0"
   },
   "devDependencies": {

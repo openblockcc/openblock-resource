@@ -1,14 +1,13 @@
 const fs = require('fs-extra');
 const path = require('path');
-const request = require('request');
-const progress = require('request-progress');
 const hashFiles = require('hash-files');
 const extract = require('extract-zip');
 const fetch = require('node-fetch');
 const parseMessage = require('openblock-parse-release-message');
-const byteSize = require('byte-size');
 const clc = require('cli-color');
 const lockFile = require('proper-lockfile');
+const Progress = require('node-fetch-progress');
+const {AbortController} = require('node-abort-controller');
 
 const {UPGRADE_STATE, UPGRADE_PROGRESS, UPGRADE_CONTENT} = require('./state');
 const {checkDirHash} = require('./calc-dir-hash');
@@ -23,9 +22,16 @@ class ResourceUpgrader {
         this._workDir = workDir;
 
         this.progress = 0; // 0 ~ 1
+
+        const controller = new AbortController();
+        this.fakeSignal = controller.signal;
     }
 
-    getLatest () {
+    getLatest (option) {
+        if (!option.signal) {
+            option.signal = this.fakeSignal;
+        }
+
         let url = `https://api.github.com/repos/${this._repo}/releases/latest`;
 
         if (this._cdn) {
@@ -33,13 +39,13 @@ class ResourceUpgrader {
         }
 
         return new Promise((resolve, reject) => {
-            fetch(url)
+            fetch(url, {signal: option.signal})
                 .then(res => resolve(res.json()))
                 .catch(err => reject(err));
         });
     }
 
-    checkUpdate () {
+    checkUpdate (option = {}) {
         if (lockFile.checkSync(this._workDir)) {
             const e = 'Resource is upgrading';
             console.log(clc.yellow(e));
@@ -47,7 +53,7 @@ class ResourceUpgrader {
         }
 
         return new Promise((resolve, reject) => {
-            this.getLatest(this._repo, this._cdn)
+            this.getLatest(option)
                 .then(info => {
                     if (info.tag_name) {
                         const version = info.tag_name;
@@ -61,58 +67,84 @@ class ResourceUpgrader {
         });
     }
 
-    download (url, dest, callback) {
+    reportStatus (callback, data) {
+        if (callback) {
+            callback(data);
+        }
+    }
+
+    download (url, dest, option) {
         if (this._cdn) {
             url = `${this._cdn}/${url}`;
         }
 
-        if (callback) {
-            callback({
-                phase: UPGRADE_STATE.downloading,
-                progress: this.progress,
-                info: {
-                    name: path.basename(dest)
-                }
-            });
-        }
+        this.reportStatus(option.callback, {
+            phase: UPGRADE_STATE.downloading,
+            progress: this.progress,
+            info: {
+                name: path.basename(dest)
+            }
+        });
 
         return new Promise((resolve, reject) => {
-            progress(request(url))
-                .on('progress', state => {
-                    if (this.progress >= UPGRADE_PROGRESS.start && this.progress < UPGRADE_PROGRESS.downloadResource) {
-                        this.progress = UPGRADE_PROGRESS.start +
-                            (state.percent * (UPGRADE_PROGRESS.downloadResource - UPGRADE_PROGRESS.start));
-                    } else {
-                        this.progress = UPGRADE_PROGRESS.downloadResource +
-                            (state.percent * (UPGRADE_PROGRESS.downloadChecksum - UPGRADE_PROGRESS.downloadResource));
+            fetch(url, {signal: option.signal})
+                .then(res => {
+                    if (res.status !== 200) {
+                        return reject(`Got status code ${res.status}: ${res.statusText}`);
                     }
-                    if (callback) {
-                        callback({
+                    const fileStream = fs.createWriteStream(dest);
+
+                    res.body.pipe(fileStream);
+                    res.body.on('error', err => reject(err));
+
+                    fileStream.on('finish', () => resolve());
+
+                    const progress = new Progress(res, {throttle: 100});
+
+                    progress.on('progress', state => {
+                        if (this.progress >= UPGRADE_PROGRESS.start && this.progress < UPGRADE_PROGRESS.downloadResource) { // eslint-disable-line max-len
+                            this.progress = UPGRADE_PROGRESS.start + (state.progress * (UPGRADE_PROGRESS.downloadResource - UPGRADE_PROGRESS.start)); // eslint-disable-line max-len
+                        } else {
+                            this.progress = UPGRADE_PROGRESS.downloadResource + (state.progress * (UPGRADE_PROGRESS.downloadChecksum - UPGRADE_PROGRESS.downloadResource)); // eslint-disable-line max-len
+                        }
+
+                        this.reportStatus(option.callback, {
                             phase: UPGRADE_STATE.downloading,
                             progress: this.progress,
                             info: {
                                 name: path.basename(dest),
-                                percent: state.percent, // 0 ~ 1
-                                speed: `${byteSize(state.speed)}/s`,
-                                total: `${byteSize(state.size.total)}`,
-                                transferred: `${byteSize(state.size.transferred)}`,
-                                remaining: formatTime(state.time.remaining)
+                                percent: state.progress,
+                                speed: state.rateh,
+                                total: state.totalh,
+                                done: state.doneh,
+                                remaining: formatTime(state.eta)
                             }
                         });
-                    }
+                    });
                 })
-                .on('error', err => reject(err))
-                .on('end', () => resolve())
-                .pipe(fs.createWriteStream(dest));
+                .catch(err => reject(err));
         });
     }
 
-    upgrade (version, callback) {
+    handleAbort () {
+        // lockFile.unlockSync(this._workDir);
+        const err = new Error();
+        err.code = err.ABORT_ERR;
+        err.message = 'The user aborted a request.';
+        return Promise.reject(err);
+    }
+
+    upgrade (version, option = {}) {
+        if (!option.signal) {
+            option.signal = this.fakeSignal;
+        }
+
         if (lockFile.checkSync(this._workDir)) {
             const e = 'A resource upgrader is already running';
             console.log(clc.yellow(e));
             return Promise.reject(e);
         }
+        lockFile.lockSync(this._workDir);
 
         const shortVersion = version.replace(/v/g, '');
 
@@ -127,64 +159,68 @@ class ResourceUpgrader {
         const checksumUrl = `https://github.com/${this._repo}/releases/download/${version}/${checksumName}`;
         const checksumPath = path.join(downloadPath, checksumName);
 
-        lockFile.lockSync(this._workDir);
-
         this.progress = UPGRADE_PROGRESS.start;
-        if (callback) {
-            callback({
-                phase: UPGRADE_STATE.downloading,
-                progress: this.progress
-            });
-        }
+        this.reportStatus(option.callback, {
+            phase: UPGRADE_STATE.downloading,
+            progress: this.progress
+        });
 
+        if (option.signal.aborted){
+            return this.handleAbort();
+        }
         // Step 1: download zip and checksun file.
-        return this.download(resourceUrl, resourcePath, callback)
-            .then(() => this.download(checksumUrl, checksumPath, callback))
+        return this.download(resourceUrl, resourcePath, option)
+            .then(() => this.download(checksumUrl, checksumPath, option))
             .then(() => {
                 // Step 2: check checksum of zip.
-                this.progress = UPGRADE_PROGRESS.verifyZip;
-                if (callback){
-                    callback({
-                        phase: UPGRADE_STATE.verifying,
-                        progress: this.progress,
-                        info: {name: UPGRADE_CONTENT.zip}
-                    });
+                if (option.signal.aborted){
+                    return this.handleAbort();
                 }
+                this.progress = UPGRADE_PROGRESS.verifyZip;
+                this.reportStatus(option.callback, {
+                    phase: UPGRADE_STATE.verifying,
+                    progress: this.progress,
+                    info: {name: UPGRADE_CONTENT.zip}
+                });
                 const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split('  ')[0];
                 const hash = hashFiles.sync({files: resourcePath, algorithm: 'sha256'});
 
                 if (zipChecksum === hash) {
                     // Step 3: delete old directory.
+                    console.log('option.signal.aborted=', option.signal.aborted);
+                    if (option.signal.aborted){
+                        return this.handleAbort();
+                    }
                     const extractPath = path.resolve(this._workDir, DIRECTORY_NAME);
                     this.progress = UPGRADE_PROGRESS.deletCache;
-                    if (callback) {
-                        callback({
-                            phase: UPGRADE_STATE.deleting,
-                            progress: this.progress,
-                            info: {name: UPGRADE_CONTENT.cache}
-                        });
-                    }
+                    this.reportStatus(option.callback, {
+                        phase: UPGRADE_STATE.deleting,
+                        progress: this.progress,
+                        info: {name: UPGRADE_CONTENT.cache}
+                    });
                     fs.rmSync(extractPath, {recursive: true, force: true});
 
                     // Step 4: extract zip.
-                    this.progress = UPGRADE_PROGRESS.extractZip;
-                    if (callback) {
-                        callback({
-                            phase: UPGRADE_STATE.extracting,
-                            progress: this.progress
-                        });
+                    if (option.signal.aborted){
+                        return this.handleAbort();
                     }
+                    this.progress = UPGRADE_PROGRESS.extractZip;
+                    this.reportStatus(option.callback, {
+                        phase: UPGRADE_STATE.extracting,
+                        progress: this.progress
+                    });
                     return extract(resourcePath, {dir: extractPath})
                         .then(() => {
                             // Step 5: check checksum of extracted directory.
-                            this.progress = UPGRADE_PROGRESS.verifyCache;
-                            if (callback) {
-                                callback({
-                                    phase: UPGRADE_STATE.verifying,
-                                    progress: this.progress,
-                                    info: {name: UPGRADE_CONTENT.cache}
-                                });
+                            if (option.signal.aborted){
+                                return this.handleAbort();
                             }
+                            this.progress = UPGRADE_PROGRESS.verifyCache;
+                            this.reportStatus(option.callback, {
+                                phase: UPGRADE_STATE.verifying,
+                                progress: this.progress,
+                                info: {name: UPGRADE_CONTENT.cache}
+                            });
 
                             const configFilePath = path.resolve(extractPath, 'config.json');
                             const dirHash = getConfigHash(configFilePath);
@@ -197,27 +233,24 @@ class ResourceUpgrader {
                         .then(() => {
                             // Step 6.1: delete downloaded files.
                             this.progress = UPGRADE_PROGRESS.deletZip;
-                            if (callback) {
-                                callback({
-                                    phase: UPGRADE_STATE.deleting,
-                                    progress: this.progress,
-                                    info: {name: UPGRADE_CONTENT.zip}
-                                });
-                            }
+                            this.reportStatus(option.callback, {
+                                phase: UPGRADE_STATE.deleting,
+                                progress: this.progress,
+                                info: {name: UPGRADE_CONTENT.zip}
+                            });
 
                             fs.rmSync(resourcePath, {recursive: true, force: true});
                             fs.rmSync(checksumPath, {recursive: true, force: true});
                             lockFile.unlockSync(this._workDir);
+                            return Promise.resolve();
                         })
                         .catch(err => {
                             // Step 6.2: if check failed, delete extracted directory.
-                            if (callback) {
-                                callback({
-                                    phase: UPGRADE_STATE.deleting,
-                                    progress: this.progress,
-                                    info: {name: UPGRADE_CONTENT.cache}
-                                });
-                            }
+                            this.reportStatus(option.callback, {
+                                phase: UPGRADE_STATE.deleting,
+                                progress: this.progress,
+                                info: {name: UPGRADE_CONTENT.cache}
+                            });
                             fs.rmSync(extractPath, {recursive: true, force: true});
                             lockFile.unlockSync(this._workDir);
                             return Promise.reject(err);

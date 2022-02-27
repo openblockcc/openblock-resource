@@ -9,7 +9,7 @@ resourceServer1.checkUpdate()
     .then(info => {
         console.log('Resource Server 1: check update info:', info);
         if (info.upgradeble) {
-            resourceServer1.upgrade(c => console.log('Resource Server 1: ', c))
+            resourceServer1.upgrade({callback: c => console.log('Resource Server 1: ', c)})
                 .then(() => {
                     console.log(clc.green('\nResource Server 1: Upgrade success'));
                 })
@@ -28,7 +28,7 @@ resourceServer2.checkUpdate()
     .then(info => {
         console.log('Resource Server 2: check update info:', info);
         if (info.upgradeble) {
-            resourceServer2.upgrade(c => console.log('Resource Server 2: ', c))
+            resourceServer2.upgrade({callback: c => console.log('Resource Server 2: ', c)})
                 .then(() => {
                     console.log(clc.green('\nResource Server 2:  Upgrade success'));
                 })
