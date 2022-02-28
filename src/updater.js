@@ -247,11 +247,6 @@ class ResourceUpdater {
                         })
                         .catch(err => {
                             // Step 6.2: if check failed, delete extracted directory.
-                            this.reportStatus(option.callback, {
-                                phase: UPGRADE_STATE.deleting,
-                                progress: this.progress,
-                                state: {name: UPGRADE_CONTENT.cache}
-                            });
                             fs.rmSync(extractPath, {recursive: true, force: true});
                             lockFile.unlockSync(this._workDir);
                             return Promise.reject(err);
