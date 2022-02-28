@@ -81,7 +81,7 @@ class ResourceUpdater {
         this.reportStatus(option.callback, {
             phase: UPGRADE_STATE.downloading,
             progress: this.progress,
-            info: {
+            state: {
                 name: path.basename(dest)
             }
         });
