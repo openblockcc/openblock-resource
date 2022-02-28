@@ -19,13 +19,21 @@ jobs:
 
       # - run: npm test
 
-      - name: get-npm-version
+      - name: Get package main version
         id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
+        uses: martinbeentjes/npm-get-version-action@v1.1.0
 
-      - run: |
-          export RELEASE_VERSION=${{ steps.package-version.outputs.current-version }}-prerelease.$(date +'%Y%m%d%H%M%S')
-          npm --no-git-tag-version version $RELEASE_VERSION
+      - name: Generate release version
+        run: |
+          echo "RELEASE_VERSION=${{ steps.package-version.outputs.current-version }}-prerelease.$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Set package version
+        run: npm --no-git-tag-version version $RELEASE_VERSION
+
+      - name: Tag release
+        run: |
+          git tag $RELEASE_VERSION
+          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY $RELEASE_VERSION
 
       - uses: JS-DevTools/npm-publish@v1
         with:

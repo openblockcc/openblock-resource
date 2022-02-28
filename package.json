@@ -1,6 +1,6 @@
 {
   "name": "openblock-resource",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "External resources for OpenBlock projects",
   "main": "start.js",
   "scripts": {
