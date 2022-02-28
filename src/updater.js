@@ -216,9 +216,6 @@ class ResourceUpdater {
                     return extract(resourcePath, {dir: extractPath})
                         .then(() => {
                             // Step 5: check checksum of extracted directory.
-                            if (option.signal.aborted){
-                                return this.handleAbort();
-                            }
                             this.progress = UPGRADE_PROGRESS.verifyCache;
                             this.reportStatus(option.callback, {
                                 phase: UPGRADE_STATE.verifying,
