@@ -1,11 +1,9 @@
-const keyMirror = require('keyMirror');
-
-const UPGRADE_STATE = keyMirror({
-    downloading: null,
-    deleting: null,
-    extracting: null,
-    verifying: null
-});
+const UPGRADE_STATE = {
+    downloading: 'downloading',
+    deleting: 'deleting',
+    extracting: 'extracting',
+    verifying: 'verifying'
+};
 
 const UPGRADE_PROGRESS = {
     start: 0.10,
@@ -19,14 +17,14 @@ const UPGRADE_PROGRESS = {
 };
 
 
-const UPGRADE_CONTENT = keyMirror({
-    zip: null,
-    cache: null
-});
+const UPGRADE_CONTENT = {
+    zip: 'zip',
+    cache: 'cache'
+};
 
-const INIT_RESOURCES_STEP = keyMirror({
-    verifying: null,
-    copying: null
-});
+const INIT_RESOURCES_STEP = {
+    verifying: 'verifying',
+    copying: 'copying'
+};
 
 module.exports = {UPGRADE_STATE, UPGRADE_PROGRESS, UPGRADE_CONTENT, INIT_RESOURCES_STEP};

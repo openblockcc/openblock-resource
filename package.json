@@ -36,7 +36,6 @@
     "format-message": "^6.2.3",
     "fs-extra": "^10.0.0",
     "hash-files": "^1.1.1",
-    "keymirror": "^0.1.1",
     "lodash": "^4.17.21",
     "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.7",
