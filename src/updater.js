@@ -108,18 +108,23 @@ class ResourceUpdater {
                             this.progress = UPGRADE_PROGRESS.downloadResource + (state.progress * (UPGRADE_PROGRESS.downloadChecksum - UPGRADE_PROGRESS.downloadResource)); // eslint-disable-line max-len
                         }
 
-                        this.reportStatus(option.callback, {
-                            phase: UPGRADE_STATE.downloading,
-                            progress: this.progress,
-                            state: {
-                                name: path.basename(dest),
-                                percent: state.progress,
-                                speed: state.rateh,
-                                total: state.totalh,
-                                done: state.doneh,
-                                remaining: formatTime(state.eta)
-                            }
-                        });
+                        // Since the writing is still running after the fetch is completed, stop the report data
+                        // when the progress is completed to 1 to prevent multiple download information from being
+                        // mixed and reported.
+                        if (state.progress !== 1) {
+                            this.reportStatus(option.callback, {
+                                phase: UPGRADE_STATE.downloading,
+                                progress: this.progress,
+                                state: {
+                                    name: path.basename(dest),
+                                    percent: state.progress,
+                                    speed: state.rateh,
+                                    total: state.totalh,
+                                    done: state.doneh,
+                                    remaining: formatTime(state.eta)
+                                }
+                            });
+                        }
                     });
                 })
                 .catch(err => reject(err));
@@ -187,7 +192,6 @@ class ResourceUpdater {
 
                 if (zipChecksum === hash) {
                     // Step 3: delete old directory.
-                    console.log('option.signal.aborted=', option.signal.aborted);
                     if (option.signal.aborted){
                         return this.handleAbort();
                     }
