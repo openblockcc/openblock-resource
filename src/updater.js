@@ -111,7 +111,7 @@ class ResourceUpdater {
                         this.reportStatus(option.callback, {
                             phase: UPGRADE_STATE.downloading,
                             progress: this.progress,
-                            info: {
+                            state: {
                                 name: path.basename(dest),
                                 percent: state.progress,
                                 speed: state.rateh,
@@ -180,7 +180,7 @@ class ResourceUpdater {
                 this.reportStatus(option.callback, {
                     phase: UPGRADE_STATE.verifying,
                     progress: this.progress,
-                    info: {name: UPGRADE_CONTENT.zip}
+                    state: {name: UPGRADE_CONTENT.zip}
                 });
                 const zipChecksum = fs.readFileSync(checksumPath, 'utf8').split('  ')[0];
                 const hash = hashFiles.sync({files: resourcePath, algorithm: 'sha256'});
@@ -196,7 +196,7 @@ class ResourceUpdater {
                     this.reportStatus(option.callback, {
                         phase: UPGRADE_STATE.deleting,
                         progress: this.progress,
-                        info: {name: UPGRADE_CONTENT.cache}
+                        state: {name: UPGRADE_CONTENT.cache}
                     });
                     fs.rmSync(extractPath, {recursive: true, force: true});
 
@@ -219,7 +219,7 @@ class ResourceUpdater {
                             this.reportStatus(option.callback, {
                                 phase: UPGRADE_STATE.verifying,
                                 progress: this.progress,
-                                info: {name: UPGRADE_CONTENT.cache}
+                                state: {name: UPGRADE_CONTENT.cache}
                             });
 
                             const configFilePath = path.resolve(extractPath, 'config.json');
@@ -236,7 +236,7 @@ class ResourceUpdater {
                             this.reportStatus(option.callback, {
                                 phase: UPGRADE_STATE.deleting,
                                 progress: this.progress,
-                                info: {name: UPGRADE_CONTENT.zip}
+                                state: {name: UPGRADE_CONTENT.zip}
                             });
 
                             fs.rmSync(resourcePath, {recursive: true, force: true});
@@ -249,7 +249,7 @@ class ResourceUpdater {
                             this.reportStatus(option.callback, {
                                 phase: UPGRADE_STATE.deleting,
                                 progress: this.progress,
-                                info: {name: UPGRADE_CONTENT.cache}
+                                state: {name: UPGRADE_CONTENT.cache}
                             });
                             fs.rmSync(extractPath, {recursive: true, force: true});
                             lockFile.unlockSync(this._workDir);

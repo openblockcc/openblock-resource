@@ -4,8 +4,7 @@ const UPGRADE_STATE = keyMirror({
     downloading: null,
     deleting: null,
     extracting: null,
-    verifying: null,
-    covering: null
+    verifying: null
 });
 
 const UPGRADE_PROGRESS = {
