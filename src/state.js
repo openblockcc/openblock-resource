@@ -6,7 +6,7 @@ const UPGRADE_STATE = {
 };
 
 const UPGRADE_PROGRESS = {
-    start: 0.10,
+    start: 0.05,
     downloadResource: 0.75,
     downloadChecksum: 0.77,
     verifyZip: 0.80,
