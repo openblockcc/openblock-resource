@@ -16,9 +16,17 @@ const {DIRECTORY_NAME} = require('./config');
 const getConfigHash = require('./get-config-hash');
 
 class ResourceUpdater {
-    constructor (repo, cdn, workDir) {
-        this._repo = repo;
-        this._cdn = cdn;
+    constructor (config, workDir) {
+        this._config = config;
+        this._provider = config.provider;
+
+        if (!this._provider) {
+            throw new Error('ERR!: You have to set a provider');
+        }
+        if (this._provider !== 'github' && this._provider !== 'spaces') {
+            throw new Error('ERR!: Not a valid provider');
+        }
+
         this._workDir = workDir;
 
         this.progress = 0; // 0 ~ 1
@@ -32,17 +40,14 @@ class ResourceUpdater {
             option.signal = this.fakeSignal;
         }
 
-        let url = `https://api.github.com/repos/${this._repo}/releases/latest`;
-
-        if (this._cdn) {
-            url = `${this._cdn}/${url}`;
+        if (this._provider === 'github') {
+            this.releasesLatestUrl = `https://api.github.com/repos/${this._config.repo}/releases/latest`;
+        } else if (this._provider === 'spaces') {
+            this.releasesLatestUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/latestRelease.json`;
         }
 
-        return new Promise((resolve, reject) => {
-            fetch(url, {signal: option.signal})
-                .then(res => resolve(res.json()))
-                .catch(err => reject(err));
-        });
+        return fetch(this.releasesLatestUrl, {signal: option.signal})
+            .then(res => res.json());
     }
 
     checkUpdate (option = {}) {
@@ -61,7 +66,7 @@ class ResourceUpdater {
 
                         return resolve({latestVersion: version, message: message});
                     }
-                    return reject(`Cannot get valid releases from: ${this._repo}`);
+                    return reject(`Cannot get valid releases from: ${this.releasesLatestUrl}`);
                 })
                 .catch(err => reject(err));
         });
@@ -74,9 +79,6 @@ class ResourceUpdater {
     }
 
     download (url, dest, option) {
-        if (this._cdn) {
-            url = `${this._cdn}/${url}`;
-        }
 
         this.reportStatus(option.callback, {
             phase: UPGRADE_STATE.downloading,
@@ -157,11 +159,21 @@ class ResourceUpdater {
         fs.ensureDirSync(downloadPath);
 
         const resourceName = `external-resources-${shortVersion}.zip`;
-        const resourceUrl = `https://github.com/${this._repo}/releases/download/${version}/${resourceName}`;
-        const resourcePath = path.join(downloadPath, resourceName);
-
         const checksumName = `${shortVersion}-checksums-sha256.txt`;
-        const checksumUrl = `https://github.com/${this._repo}/releases/download/${version}/${checksumName}`;
+
+        let resourceUrl;
+        let checksumUrl;
+
+        if (this._provider === 'github') {
+            resourceUrl = `https://github.com/${this._config.repo}/releases/download/${version}/${resourceName}`;
+            checksumUrl = `https://github.com/${this._config.repo}/releases/download/${version}/${checksumName}`;
+
+        } else if (this._provider === 'spaces') {
+            resourceUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/${resourceName}`;
+            checksumUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/${checksumName}`;
+        }
+
+        const resourcePath = path.join(downloadPath, resourceName);
         const checksumPath = path.join(downloadPath, checksumName);
 
         this.progress = UPGRADE_PROGRESS.start;
