@@ -68,8 +68,6 @@ class ResourceServer extends Emitter{
             thirdPartyTranslations
         );
 
-        // // TODO: Generate and cache the data when the language is first request.
-        // Object.keys(locales).forEach(locale => {
         this._formatMessage[`${locale}`] = formatMessage.namespace();
         this._formatMessage[`${locale}`].setup({
             locale: locale,
@@ -81,7 +79,6 @@ class ResourceServer extends Emitter{
 
         this.extensionsIndexData[`${locale}`] =
                 JSON.stringify(this.extensions.assembleData(this._userDataPath, this._formatMessage[`${locale}`]));
-        // });
     }
 
     isSameServer (host, port) {
