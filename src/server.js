@@ -3,7 +3,6 @@ const express = require('express');
 const Emitter = require('events');
 const path = require('path');
 const fs = require('fs');
-const locales = require('openblock-l10n').default;
 const {defaultsDeep} = require('lodash');
 const fetch = require('node-fetch');
 const https = require('https');
