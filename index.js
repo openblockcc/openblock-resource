@@ -123,7 +123,8 @@ class OpenblockResourceServer extends Emitter{
         }
 
         if (!this.updater) {
-            this.updater = new ResourceUpdater(this._locale === 'CN' ? config.updater.cn : config.updater.default,
+            this.updater = new ResourceUpdater(
+                this._locale === 'CN' && config.updater.cn ? config.updater.cn : config.updater.default,
                 path.dirname(this._userDataPath));
         }
 
