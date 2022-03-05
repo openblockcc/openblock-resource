@@ -40,7 +40,7 @@
     "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.7",
     "node-fetch-progress": "^1.0.2",
-    "openblock-l10n": "^3.10.20220105060755",
+    "openblock-l10n": "^3.10.20220304103031",
     "openblock-parse-release-message": "0.0.1",
     "proper-lockfile": "^4.1.2",
     "require-all": "^3.0.0"
