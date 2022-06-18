@@ -4,7 +4,7 @@
   "description": "External resources for OpenBlock projects",
   "main": "start.js",
   "scripts": {
-    "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v2",
+    "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v2 --plat=github",
     "start": "node ./test/start-server.js",
     "clean": "rimraf external-resources dist translation download ../.openblockData/external-resources",
     "build:extension": "node script/generate-extension-page.js --url=https://openblockcc.github.io/external-resources/",

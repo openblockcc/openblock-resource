@@ -21,7 +21,8 @@ const parseArgs = require('./parseArgs');
 const getConfigHash = require('../src/get-config-hash');
 
 
-const {repo, cdn} = parseArgs();
+const {repo, plat, cdn} = parseArgs();
+
 
 if (!repo) {
     console.error(clc.red('ERR!: No repo specified'));
@@ -29,8 +30,12 @@ if (!repo) {
 }
 
 const getLatest = () => {
-    let url = `https://api.github.com/repos/${repo}/releases/latest`;
-
+    let url;
+    if (plat === 'github' || !plat) {
+        url = `https://api.github.com/repos/${repo}/releases/latest`;
+    } else if (plat === 'gitee') {
+        url = `https://gitee.com/api/v5/repos/${repo}//releases/latest`;
+    }
     if (cdn) {
         url = `${cdn}/${url}`;
     }
@@ -101,10 +106,12 @@ getLatest()
         let checksum;
 
         assets.forEach(asset => {
-            if (asset.name.includes('checksums')) {
-                checksum = asset;
-            } else if (asset.name.includes('external-resources')) {
-                resource = asset;
+            if (asset.name) {
+                if (asset.name.includes('checksums')) {
+                    checksum = asset;
+                } else if (asset.name.includes('external-resources')) {
+                    resource = asset;
+                }
             }
         });
 
