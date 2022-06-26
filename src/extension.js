@@ -12,7 +12,7 @@ const EXTENSION_CLASS = ['shield', 'actuator', 'sensor', 'communication', 'displ
  * Device tyoe.
  * @readonly
  */
-const DEVICE_TYPE = ['arduino', 'microbit'];
+const DEVICE_TYPE = ['arduino', 'microbit', 'microPython'];
 
 const TYPE = 'extensions';
 
