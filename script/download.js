@@ -3,6 +3,7 @@
  * Download external-resrouce from the specified repository, extract it and check the comparison checksum
  *
  * use --repo to specify the download address, e.g: --repo=openblockcc/external-resources
+ * use --plat to Specify the download platform, gitee or github
  * use --cdn to specify the use of the cdn proxy server address, e.g: --cdn=https://cdn.openblock.cc/
  */
 
