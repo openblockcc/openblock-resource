@@ -8,7 +8,7 @@ const buildPath = path.join(__dirname, '../dist/extensions');
 const translations = require(path.join(__dirname, '../external-resources/locales.js'));
 
 const EXTENSION_CLASS = ['sheild', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
-const DEVICE_TYPE = ['arduino', 'microbit'];
+const DEVICE_TYPE = ['arduino', 'microbit', 'microPython'];
 
 const parseArgs = () => {
     const scriptArgs = process.argv.slice(2); // remove `node` and `this-script.js`

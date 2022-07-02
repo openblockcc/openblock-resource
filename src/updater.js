@@ -23,7 +23,7 @@ class ResourceUpdater {
         if (!this._provider) {
             throw new Error('ERR!: You have to set a provider');
         }
-        if (this._provider !== 'github' && this._provider !== 'spaces') {
+        if (this._provider !== 'github' && this._provider !== 'spaces' && this._provider !== 'gitee') {
             throw new Error('ERR!: Not a valid provider');
         }
 
@@ -44,6 +44,8 @@ class ResourceUpdater {
             this.releasesLatestUrl = `https://api.github.com/repos/${this._config.repo}/releases/latest`;
         } else if (this._provider === 'spaces') {
             this.releasesLatestUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/latestRelease.json`;
+        } else if (this._provider === 'gitee') {
+            this.releasesLatestUrl = `https://gitee.com/api/v5/repos/${this._config.repo}/releases/latest`;
         }
 
         return fetch(this.releasesLatestUrl, {signal: option.signal})
@@ -63,6 +65,10 @@ class ResourceUpdater {
                     if (info.tag_name) {
                         const version = info.tag_name;
                         const message = parseMessage(info.body);
+
+                        if (this._provider === 'gitee') {
+                            this.releaseInfo = info;
+                        }
 
                         return resolve({latestVersion: version, message: message});
                     }
@@ -171,6 +177,21 @@ class ResourceUpdater {
         } else if (this._provider === 'spaces') {
             resourceUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/${resourceName}`;
             checksumUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/${checksumName}`;
+
+        } else if (this._provider === 'gitee') {
+            if (this.releaseInfo) {
+                for (const idx in this.releaseInfo.assets) {
+                    const info = this.releaseInfo.assets[idx];
+                    const name = info.name;
+                    if (!name) {
+                        continue;
+                    } if (name.indexOf('external-resources') !== -1) {
+                        resourceUrl = `${info.browser_download_url}/${info.name}`;
+                    } else if (name.indexOf('checksums-sha256') !== -1) {
+                        checksumUrl = `${info.browser_download_url}/${info.name}`;
+                    }
+                }
+            }
         }
 
         const resourcePath = path.join(downloadPath, resourceName);

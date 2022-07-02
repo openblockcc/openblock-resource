@@ -4,6 +4,7 @@ const parseArgs = () => {
     let dir;
     let version;
     let repo;
+    let plat;
     let cdn;
 
     for (const arg of scriptArgs) {
@@ -19,12 +20,16 @@ const parseArgs = () => {
         if (repoSplit[1] === '=') {
             repo = repoSplit[2];
         }
+        const platSplit = arg.split(/--plat(\s+|=)/);
+        if (platSplit[1] === '=') {
+            plat = platSplit[2];
+        }
         const cdnSplit = arg.split(/--cdn(\s+|=)/);
         if (cdnSplit[1] === '=') {
             cdn = cdnSplit[2];
         }
     }
-    return {dir, version, repo, cdn};
+    return {dir, version, repo, plat, cdn};
 };
 
 module.exports = parseArgs;
