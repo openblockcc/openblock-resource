@@ -55,6 +55,18 @@ const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
  */
 const RECHECK_INTERVAL = 1000 * 1;
 
+/**
+ * Extenions class.
+ * @readonly
+ */
+const EXTENSION_CLASS = ['shield', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
+
+/**
+ * Device tyoe.
+ * @readonly
+ */
+const DEVICE_TYPE = ['arduino', 'microbit', 'microPython'];
+
 
 module.exports = {
     DIRECTORY_NAME,
@@ -66,5 +78,7 @@ module.exports = {
     REOPEN_INTERVAL,
     OFFICIAL_TRANSLATIONS_FILE,
     THIRD_PARTY_TRANSLATIONS_FILE,
-    RECHECK_INTERVAL
+    RECHECK_INTERVAL,
+    EXTENSION_CLASS,
+    DEVICE_TYPE
 };

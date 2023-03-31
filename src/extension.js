@@ -2,17 +2,7 @@ const requireAll = require('require-all');
 const path = require('path');
 const fs = require('fs');
 
-/**
- * Extenions class.
- * @readonly
- */
-const EXTENSION_CLASS = ['shield', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
-
-/**
- * Device tyoe.
- * @readonly
- */
-const DEVICE_TYPE = ['arduino', 'microbit', 'microPython'];
+const {EXTENSION_CLASS, DEVICE_TYPE} = require('./config');
 
 const TYPE = 'extensions';
 
@@ -45,10 +35,6 @@ class OpenBlockExtension {
                         content.generator = path.join(basePath, content.generator);
                         content.toolbox = path.join(basePath, content.toolbox);
                         content.msg = path.join(basePath, content.msg);
-
-                        if (content.funtions) {
-                            content.funtions = path.join(basePath, content.funtions);
-                        }
                         if (content.library) {
                             content.library = path.join(extPath, ext[0], content.library);
                         }
