@@ -23,42 +23,59 @@ class OpenBlockDevice {
 
         // eslint-disable-next-line global-require
         const deviceList = require(path.join(userDataPath, this.type, 'device.js'));
-        deviceList.forEach(listItem => {
+
+        const parseDeviceList = [];
+        deviceList.forEach(deviceId => {
+            if (typeof deviceId === 'object') {
+                deviceId.forEach(id => {
+                    parseDeviceList.push(id);
+                });
+            } else {
+                parseDeviceList.push(deviceId);
+            }
+        });
+
+        parseDeviceList.forEach(deviceId => {
             let matched = false;
             Object.entries(devices).forEach(catlog => {
                 Object.entries(catlog[1]).forEach(dev => {
                     const content = dev[1]['index.js'](formatMessage);
 
-                    const processContent = ct => {
-                        if (ct.deviceId === listItem) {
+                    const processDeviceData = deviceData => {
+                        if (deviceData.deviceId === deviceId) {
 
                             const basePath = path.join(this.type, catlog[0], dev[0]);
 
-                            if (ct.iconURL) {
-                                ct.iconURL = path.join(basePath, ct.iconURL);
+                            if (deviceData.iconURL) {
+                                deviceData.iconURL = path.join(basePath, deviceData.iconURL);
                             }
-                            if (ct.connectionIconURL) {
-                                ct.connectionIconURL = path.join(basePath, ct.connectionIconURL);
+                            if (deviceData.connectionIconURL) {
+                                deviceData.connectionIconURL = path.join(basePath, deviceData.connectionIconURL);
                             }
-                            if (ct.connectionSmallIconURL) {
-                                ct.connectionSmallIconURL = path.join(basePath, ct.connectionSmallIconURL);
+                            if (deviceData.connectionSmallIconURL) {
+                                deviceData.connectionSmallIconURL = path.join(basePath, deviceData.connectionSmallIconURL);
                             }
+                            if (deviceData.scExt) {
+                                deviceData.scExt = path.join(basePath, deviceData.scExt);
+                            }
+
                             matched = true;
-                            devicesThumbnailData.push(ct);
+                            devicesThumbnailData.push(deviceData);
                         }
                     };
 
-                    if (Object.keys(content)[0] === '0') {
-                        Object.values(content).forEach(ct => {
-                            processContent(ct);
+                    // Support for multiple frameworks device data
+                    if (content.length > 1) {
+                        content.forEach(deviceData => {
+                            processDeviceData(deviceData);
                         });
                     } else {
-                        processContent(content);
+                        processDeviceData(content);
                     }
                 });
             });
             if (!matched) {
-                devicesThumbnailData.push({deviceId: listItem});
+                devicesThumbnailData.push({deviceId: deviceId});
             }
         });
 
