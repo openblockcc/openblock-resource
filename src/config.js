@@ -62,7 +62,7 @@ const RECHECK_INTERVAL = 1000 * 1;
 const EXTENSION_CLASS = ['shield', 'actuator', 'sensor', 'communication', 'display', 'kit', 'other'];
 
 /**
- * Device tyoe.
+ * Device type.
  * @readonly
  */
 const DEVICE_TYPE = ['arduino', 'microbit', 'microPython'];
