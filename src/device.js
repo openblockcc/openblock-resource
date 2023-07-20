@@ -12,7 +12,7 @@ class OpenBlockDevice {
         this.type = TYPE;
     }
 
-    assembleData (userDataPath, formatMessage) {
+    assembleData (userDataPath, edition, formatMessage) {
         const devicesThumbnailData = [];
 
         const devices = requireAll({
@@ -46,6 +46,7 @@ class OpenBlockDevice {
 
                             const basePath = path.join(this.type, catlog[0], dev[0]);
 
+                            // Convert a local file path to a network address
                             if (deviceData.iconURL) {
                                 deviceData.iconURL = path.join(basePath, deviceData.iconURL);
                             }
@@ -53,10 +54,27 @@ class OpenBlockDevice {
                                 deviceData.connectionIconURL = path.join(basePath, deviceData.connectionIconURL);
                             }
                             if (deviceData.connectionSmallIconURL) {
-                                deviceData.connectionSmallIconURL = path.join(basePath, deviceData.connectionSmallIconURL);
+                                deviceData.connectionSmallIconURL = path.join(basePath,
+                                    deviceData.connectionSmallIconURL);
                             }
-                            if (deviceData.scExt) {
-                                deviceData.scExt = path.join(basePath, deviceData.scExt);
+                            if (deviceData.register) {
+                                deviceData.register = path.join(basePath, deviceData.register);
+                            }
+                            if (deviceData.translations) {
+                                deviceData.translations = path.join(basePath, deviceData.translations);
+                            }
+
+                            // filter data based on the edition accessed
+                            if (edition === 'cmtye') {
+                                // when accessing data in the community version, the multi-programming
+                                // framework device only reads the arduino content
+                                if (deviceData.typeList > 1 && deviceData.deviceId.indexOf('arduino') === -1) {
+                                    return;
+                                }
+                                // if the device is not inherited from build-in board, filter it out
+                                if (deviceData.deviceId.indexOf('_') === -1) {
+                                    return;
+                                }
                             }
 
                             matched = true;

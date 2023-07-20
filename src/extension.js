@@ -15,7 +15,7 @@ class OpenBlockExtension {
         this.type = TYPE;
     }
 
-    assembleData (userDataPath, formatMessage) {
+    assembleData (userDataPath, edition, formatMessage) {
         const extensionsThumbnailData = [];
 
         DEVICE_TYPE.forEach(deviceType => {
@@ -28,16 +28,41 @@ class OpenBlockExtension {
                         const content = ext[1]['index.js'](formatMessage);
                         const basePath = path.join(this.type, deviceType, extClass, ext[0]);
 
+                        // Convert a local file path to a network address
                         if (content.iconURL) {
                             content.iconURL = path.join(basePath, content.iconURL);
                         }
-                        content.blocks = path.join(basePath, content.blocks);
-                        content.generator = path.join(basePath, content.generator);
-                        content.toolbox = path.join(basePath, content.toolbox);
-                        content.msg = path.join(basePath, content.msg);
+                        if (content.blocks) {
+                            content.blocks = path.join(basePath, content.blocks);
+                        }
+                        if (content.generator) {
+                            content.generator = path.join(basePath, content.generator);
+                        }
+                        if (content.toolbox) {
+                            content.toolbox = path.join(basePath, content.toolbox);
+                        }
+                        if (content.msg) {
+                            content.msg = path.join(basePath, content.msg);
+                        }
                         if (content.library) {
                             content.library = path.join(extPath, ext[0], content.library);
                         }
+                        if (content.main) {
+                            content.main = path.join(basePath, content.main);
+                        }
+                        if (content.translations) {
+                            content.translations = path.join(basePath, content.translations);
+                        }
+
+                        // filter data based on the edition accessed
+                        if (edition === 'cmtye') {
+                            // if the extension only has main.js but no blocks.js,
+                            // the plugin should be blocked
+                            if (!!content.main && !content.blocks) {
+                                return;
+                            }
+                        }
+
                         extensionsThumbnailData.push(content);
                     });
                 }
