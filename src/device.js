@@ -1,5 +1,6 @@
 const requireAll = require('require-all');
 const path = require('path');
+const fs = require('fs');
 
 const TYPE = 'devices';
 
@@ -38,6 +39,17 @@ class OpenBlockDevice {
         parseDeviceList.forEach(deviceId => {
             let matched = false;
             Object.entries(devices).forEach(dev => {
+                const translationsFile = path.join(userDataPath, this.type, dev[0], 'translations.js');
+                let translations;
+                if (fs.existsSync(translationsFile)) {
+                    // eslint-disable-next-line global-require
+                    const locales = require(translationsFile);
+                    translations = locales.getInterfaceTranslations();
+                    formatMessage.setup({
+                        translations: translations
+                    });
+                }
+
                 const content = dev[1]['index.js'](formatMessage);
 
                 const processDeviceData = deviceData => {

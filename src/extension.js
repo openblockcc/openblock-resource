@@ -20,6 +20,17 @@ class OpenBlockExtension {
         if (fs.existsSync(extPath)) {
             const data = requireAll({dirname: extPath, filter: /index.js$/, recursive: true});
             Object.entries(data).forEach(ext => {
+                const translationsFile = path.join(userDataPath, this.type, ext[0], 'translations.js');
+                let translations;
+                if (fs.existsSync(translationsFile)){
+                    // eslint-disable-next-line global-require
+                    const locales = require(translationsFile);
+                    translations = locales.getInterfaceTranslations();
+                    formatMessage.setup({
+                        translations: translations
+                    });
+                }
+
                 // Modify the attribute to point to the real address.
                 const content = ext[1]['index.js'](formatMessage);
                 const basePath = path.join(this.type, ext[0]);
@@ -36,9 +47,6 @@ class OpenBlockExtension {
                 }
                 if (content.toolbox) {
                     content.toolbox = path.join(basePath, content.toolbox);
-                }
-                if (content.msg) {
-                    content.msg = path.join(basePath, content.msg);
                 }
                 if (content.library) {
                     content.library = path.join(userDataPath, basePath, content.library);

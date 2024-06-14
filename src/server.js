@@ -3,7 +3,6 @@ const express = require('express');
 const Emitter = require('events');
 const path = require('path');
 const fs = require('fs');
-const {defaultsDeep} = require('lodash');
 const fetch = require('node-fetch');
 const http = require('http');
 const clc = require('cli-color');
@@ -14,9 +13,7 @@ const {
     DEFAULT_HOST,
     DEFAULT_PORT,
     SERVER_NAME,
-    REOPEN_INTERVAL,
-    OFFICIAL_TRANSLATIONS_FILE,
-    THIRD_PARTY_TRANSLATIONS_FILE
+    REOPEN_INTERVAL
 } = require('./config');
 
 /**
@@ -50,37 +47,18 @@ class ResourceServer extends Emitter{
             return;
         }
 
-        let officialTranslations;
-        let thirdPartyTranslations;
-
-        try {
-            officialTranslations = JSON.parse(fs.readFileSync(path.join(this._userDataPath, OFFICIAL_TRANSLATIONS_FILE), 'utf8')); // eslint-disable-line max-len
-            thirdPartyTranslations = JSON.parse(fs.readFileSync(path.join(this._userDataPath, THIRD_PARTY_TRANSLATIONS_FILE), 'utf8')); // eslint-disable-line max-len
-
-        } catch (e) {
-            console.error(clc.red(`ERR!: ${e}`)); // eslint-disable-line max-len
-            this.emit('error', e);
-        }
-
-        const translations = defaultsDeep(
-            {},
-            officialTranslations,
-            thirdPartyTranslations
-        );
-
-        this._formatMessage[`${locale}`] = formatMessage.namespace();
-        this._formatMessage[`${locale}`].setup({
-            locale: locale,
-            translations: translations
+        this._formatMessage = formatMessage.namespace();
+        this._formatMessage.setup({
+            locale: locale
         });
 
         this.deviceIndexData[`${edition}`][`${locale}`] =
             JSON.stringify(this.devices.assembleData(this._userDataPath,
-                edition, this._formatMessage[`${locale}`]));
+                edition, this._formatMessage));
 
         this.extensionsIndexData[`${edition}`][`${locale}`] =
             JSON.stringify(this.extensions.assembleData(this._userDataPath,
-                edition, this._formatMessage[`${locale}`]));
+                edition, this._formatMessage));
     }
 
     isSameServer (host, port) {

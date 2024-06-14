@@ -43,13 +43,6 @@ const SERVER_NAME = 'openblock-resource-server';
 const REOPEN_INTERVAL = 1000 * 1;
 
 /**
- * Translate file name.
- * @readonly
- */
-const OFFICIAL_TRANSLATIONS_FILE = 'official-locales.json';
-const THIRD_PARTY_TRANSLATIONS_FILE = 'third-party-locales.json';
-
-/**
  * The time interval for recheck the state of initial
  * @readonly
  */
@@ -64,7 +57,5 @@ module.exports = {
     DEFAULT_PORT,
     SERVER_NAME,
     REOPEN_INTERVAL,
-    OFFICIAL_TRANSLATIONS_FILE,
-    THIRD_PARTY_TRANSLATIONS_FILE,
     RECHECK_INTERVAL
 };
