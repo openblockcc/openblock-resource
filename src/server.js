@@ -36,14 +36,14 @@ class ResourceServer extends Emitter{
         this.devices = new OpenBlockDevice();
 
         this._formatMessage = {};
-        this.deviceIndexData = {cmtye: {}, distro: {}};
-        this.extensionsIndexData = {cmtye: {}, distro: {}};
+        this.deviceIndexData = {};
+        this.extensionsIndexData = {};
     }
 
     // If the cache is not exist, generate it.
-    generateCache (edition, locale) {
-        if (this.deviceIndexData[`${edition}`][`${locale}`] &&
-            this.extensionsIndexData[`${edition}`][`${locale}`]) {
+    generateCache (locale) {
+        if (this.deviceIndexData[`${locale}`] &&
+            this.extensionsIndexData[`${locale}`]) {
             return;
         }
 
@@ -52,13 +52,13 @@ class ResourceServer extends Emitter{
             locale: locale
         });
 
-        this.deviceIndexData[`${edition}`][`${locale}`] =
+        this.deviceIndexData[`${locale}`] =
             JSON.stringify(this.devices.assembleData(this._userDataPath,
-                edition, this._formatMessage));
+                this._formatMessage));
 
-        this.extensionsIndexData[`${edition}`][`${locale}`] =
+        this.extensionsIndexData[`${locale}`] =
             JSON.stringify(this.extensions.assembleData(this._userDataPath,
-                edition, this._formatMessage));
+                this._formatMessage));
     }
 
     isSameServer (host, port) {
@@ -106,16 +106,10 @@ class ResourceServer extends Emitter{
             res.send(SERVER_NAME);
         });
 
-        this._app.get('/:type/:edition/:locale', (req, res) => {
+        this._app.get('/:type/:locale', (req, res) => {
             const type = req.params.type;
-            const edition = req.params.edition;
 
             if (type !== 'devices' && type !== 'extensions') {
-                res.sendStatus(404);
-                return;
-            }
-
-            if (edition !== 'cmtye' && edition !== 'distro') {
                 res.sendStatus(404);
                 return;
             }
@@ -129,11 +123,11 @@ class ResourceServer extends Emitter{
 
             // Generate data cache after first access
             if (type === this.extensions.type) {
-                this.generateCache(edition, locale);
-                res.send(this.extensionsIndexData[`${edition}`][`${locale}`]);
+                this.generateCache(locale);
+                res.send(this.extensionsIndexData[`${locale}`]);
             } else if (type === this.devices.type) {
-                this.generateCache(edition, locale);
-                res.send(this.deviceIndexData[`${edition}`][`${locale}`]);
+                this.generateCache(locale);
+                res.send(this.deviceIndexData[`${locale}`]);
             }
         });
 

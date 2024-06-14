@@ -13,7 +13,7 @@ class OpenBlockDevice {
         this.type = TYPE;
     }
 
-    assembleData (userDataPath, edition, formatMessage) {
+    assembleData (userDataPath, formatMessage) {
         const devicesThumbnailData = [];
 
         const devices = requireAll({
@@ -68,8 +68,8 @@ class OpenBlockDevice {
                             deviceData.connectionSmallIconURL = path.join(basePath,
                                 deviceData.connectionSmallIconURL);
                         }
-                        if (deviceData.register) {
-                            deviceData.register = path.join(basePath, deviceData.register);
+                        if (deviceData.main) {
+                            deviceData.main = path.join(basePath, deviceData.main);
                         }
                         if (deviceData.translations) {
                             deviceData.translations = path.join(basePath, deviceData.translations);
@@ -79,19 +79,6 @@ class OpenBlockDevice {
                         }
                         if (deviceData.arduinoData) {
                             deviceData.arduinoData = path.join(basePath, deviceData.arduinoData);
-                        }
-
-                        // filter data based on the edition accessed
-                        if (edition === 'cmtye') {
-                            // when accessing data in the community version, the multi-programming
-                            // framework device only reads the arduino content
-                            if (deviceData.typeList > 1 && deviceData.deviceId.indexOf('arduino') === -1) {
-                                return;
-                            }
-                            // if the device is not inherited from build-in board, filter it out
-                            if (deviceData.deviceId.indexOf('_') === -1) {
-                                return;
-                            }
                         }
 
                         matched = true;

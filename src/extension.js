@@ -13,7 +13,7 @@ class OpenBlockExtension {
         this.type = TYPE;
     }
 
-    assembleData (userDataPath, edition, formatMessage) {
+    assembleData (userDataPath, formatMessage) {
         const extensionsThumbnailData = [];
 
         const extPath = path.join(userDataPath, this.type);
@@ -56,15 +56,6 @@ class OpenBlockExtension {
                 }
                 if (content.translations) {
                     content.translations = path.join(basePath, content.translations);
-                }
-
-                // filter data based on the edition accessed
-                if (edition === 'cmtye') {
-                    // if the extension only has main.js but no blocks.js,
-                    // the plugin should be blocked
-                    if (!!content.main && !content.blocks) {
-                        return;
-                    }
                 }
 
                 extensionsThumbnailData.push(content);
