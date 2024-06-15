@@ -2,7 +2,7 @@
   "name": "openblock-resource",
   "version": "0.2.0",
   "description": "External resources for OpenBlock projects",
-  "main": "start.js",
+  "main": "index.js",
   "scripts": {
     "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v2 --plat=github",
     "start": "node ./test/start-server.js",
@@ -22,7 +22,6 @@
     "test:cnUpdate": "node test/cnUpdate.js",
     "test:multi-update": "node test/multi-update.js",
     "test:multi-server": "node test/multi-server.js",
-    "test:multi-init": "rimraf ../.openblockData/external-resources && node test/multi-initial.js",
     "test:abort-check": "node test/abortCheckUpdate.js",
     "test:abort-update": "node test/abortUpdate.js"
   },

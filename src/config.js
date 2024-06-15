@@ -1,16 +1,16 @@
 const path = require('path');
 
 /**
- * The name of reousce directory.
+ * The path of default cache resource.
  * @readonly
  */
-const DIRECTORY_NAME = 'external-resources';
+const DEFAULT_CACHE_RESOURCES_PATH = path.join(__dirname, '../../.openblockData/external-resources');
 
 /**
- * The path of default user data directory.
+ * The path of default build-in resource.
  * @readonly
  */
-const DEFAULT_USER_DATA_PATH = path.join(__dirname, '../../.openblockData');
+const DEFAULT_BUILTIN_RESOURCES_PATH = path.join(__dirname, '../external-resources');
 
 /**
  * The locale of default.
@@ -50,8 +50,8 @@ const RECHECK_INTERVAL = 1000 * 1;
 
 
 module.exports = {
-    DIRECTORY_NAME,
-    DEFAULT_USER_DATA_PATH,
+    DEFAULT_CACHE_RESOURCES_PATH,
+    DEFAULT_BUILTIN_RESOURCES_PATH,
     DEFAULT_LOCALE,
     DEFAULT_HOST,
     DEFAULT_PORT,

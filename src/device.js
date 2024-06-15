@@ -13,17 +13,21 @@ class OpenBlockDevice {
         this.type = TYPE;
     }
 
-    assembleData (userDataPath, formatMessage) {
+    assembleData (dataPath, formatMessage) {
         const devicesThumbnailData = [];
 
+        if (!fs.existsSync(dataPath)) {
+            return devicesThumbnailData;
+        }
+
         const devices = requireAll({
-            dirname: `${path.join(userDataPath, this.type)}`,
+            dirname: `${path.join(dataPath, this.type)}`,
             filter: /index.js$/,
             recursive: true
         });
 
         // eslint-disable-next-line global-require
-        const deviceList = require(path.join(userDataPath, this.type, 'device.js'));
+        const deviceList = require(path.join(dataPath, this.type, 'device.js'));
 
         const parseDeviceList = [];
         deviceList.forEach(deviceId => {
@@ -39,7 +43,7 @@ class OpenBlockDevice {
         parseDeviceList.forEach(deviceId => {
             let matched = false;
             Object.entries(devices).forEach(dev => {
-                const translationsFile = path.join(userDataPath, this.type, dev[0], 'translations.js');
+                const translationsFile = path.join(dataPath, this.type, dev[0], 'translations.js');
                 let translations;
                 if (fs.existsSync(translationsFile)) {
                     // eslint-disable-next-line global-require
