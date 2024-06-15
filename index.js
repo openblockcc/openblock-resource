@@ -42,8 +42,6 @@ class OpenblockResourceServer extends Emitter{
             this._configPath = path.join(this._builtinResourcesPath, 'config.json');
         }
 
-        console.log(this._configPath);
-
         this._locale = locale;
 
         this._latestVersion = null;
