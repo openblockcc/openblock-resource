@@ -27,11 +27,11 @@ class OpenblockResourceServer extends Emitter{
             this._builtinResourcesPath = path.join(DEFAULT_BUILTIN_RESOURCES_PATH);
         }
 
-        // If 'OpenBlockResources' exists in the upper-level directory, the content in this
+        // If 'OpenBlockExternalResources' exists in the upper-level directory, the content in this
         // directory will be used first, rather than the content in the software installation path.
         // This method is used when customizing by a third-party manufacturer, so as to avoid overwriting
         // the content of the third - party manufacturer when updating the software.
-        const thirdPartyResourcesPath = path.join(this._builtinResourcesPath, '../../OpenBlockResources');
+        const thirdPartyResourcesPath = path.join(this._builtinResourcesPath, '../../OpenBlockExternalResources');
         if (fs.existsSync(thirdPartyResourcesPath)) {
             this._builtinResourcesPath = thirdPartyResourcesPath;
         }
