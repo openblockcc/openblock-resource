@@ -16,10 +16,8 @@ const hashFiles = require('hash-files');
 const clc = require('cli-color');
 const Progress = require('node-fetch-progress');
 
-const {checkDirHash} = require('../src/calc-dir-hash');
 const {formatTime} = require('../src/format');
-const parseArgs = require('./parseArgs');
-const getConfigHash = require('../src/get-config-hash');
+const parseArgs = require('./lib/parseArgs');
 
 
 const {repo, plat, cdn} = parseArgs();
@@ -143,18 +141,7 @@ getLatest()
                         console.info(`${resourcePath} has passed the checksum detection`);
                         extract(resourcePath, {dir: extractPath})
                             .then(() => {
-                                // Compare folder checksums
-                                const configFilePath = path.resolve(extractPath, 'config.json');
-                                const dirHash = getConfigHash(configFilePath);
-                                if (!dirHash) {
-                                    console.warn(clc.yellow(`WARN: no hash value found in ${configFilePath}`));
-                                    return Promise.resolve();
-                                }
-                                return checkDirHash(extractPath, dirHash);
-                            })
-                            .then(() => {
                                 fs.rmSync(downloadPath, {recursive: true, force: true});
-
                                 console.log(clc.green(`\nExternal resource has been successfully downloaded and extracted to path: ${extractPath}`)); // eslint-disable-line max-len
                             })
                             .catch(() => {
