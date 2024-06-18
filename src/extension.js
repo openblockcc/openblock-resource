@@ -16,15 +16,11 @@ class OpenBlockExtension {
     assembleData (dataPath, formatMessage) {
         const extensionsThumbnailData = [];
 
-        if (!fs.existsSync(dataPath)) {
-            return extensionsThumbnailData;
-        }
-
         const extPath = path.join(dataPath, this.type);
         if (fs.existsSync(extPath)) {
             const data = requireAll({dirname: extPath, filter: /index.js$/, recursive: true});
             Object.entries(data).forEach(ext => {
-                const translationsFile = path.join(dataPath, this.type, ext[0], 'translations.js');
+                const translationsFile = path.join(extPath, ext[0], 'translations.js');
                 let translations;
                 if (fs.existsSync(translationsFile)){
                     // eslint-disable-next-line global-require
