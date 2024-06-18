@@ -34,15 +34,14 @@ const runCliSync = cmd => {
     }
 };
 
-const txPushSrc = path.resolve(__dirname, '../node_modules/openblock-l10n/scripts/tx-push-src.js');
-const pushBlocksContent = `node ${txPushSrc} openblock-resources blocks ${path.resolve(workDir)}/translations/blocks/en.json`; // eslint-disable-line max-len
-const pushInterfaceContent = `node ${txPushSrc} openblock-resources interface ${path.resolve(workDir)}/translations/interface/en.json`; // eslint-disable-line max-len
-const pushExtensionsContent = `node ${txPushSrc} openblock-resources extensions ${path.resolve(workDir)}/translations/extensions/en.json`; // eslint-disable-line max-len
+const pushBlocksContent = `tx-push-src openblock-resources blocks ${path.resolve(workDir)}/translations/blocks/en.json`; // eslint-disable-line max-len
+const pushInterfaceContent = `tx-push-src openblock-resources interface ${path.resolve(workDir)}/translations/interface/en.json`; // eslint-disable-line max-len
+const pushExtensionsContent = `tx-push-src openblock-resources extensions ${path.resolve(workDir)}/translations/extensions/en.json`; // eslint-disable-line max-len
 
 runCliSync(pushBlocksContent);
 runCliSync(pushInterfaceContent);
 runCliSync(pushExtensionsContent);
 
 if (exitCode === 0) {
-    console.log('\nSuccessfully pushed to transifex');
+    console.log('Successfully push i18n to transifex');
 }

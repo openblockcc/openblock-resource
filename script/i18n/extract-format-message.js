@@ -87,7 +87,7 @@ const searchExtensionsFormatMessages = (err, pathName, dirent) => {
         const containsDeviceRegister = fs.readFileSync(pathName, 'utf8').slice(0, 100)
             .match(/registerDevice/g);
 
-        if (path.basename(pathName) === EXTENSIONS_FILE || containsDeviceRegister) {
+        if ((path.basename(pathName) === EXTENSIONS_FILE) || containsDeviceRegister) {
             if (isOfficial(pathName)) {
                 const content = fs.readFileSync(pathName, 'utf8');
                 const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
@@ -218,7 +218,7 @@ generateInterfaceMessageJson(workDir)
         const filePath = path.resolve(workDir, 'translations/extensions/en.json');
         fs.ensureDirSync(path.dirname(filePath));
         fs.writeFileSync(filePath, extensionJson);
-        console.log(`Interface i18n is created: ${filePath}`);
+        console.log(`Scrartch extensions i18n is created: ${filePath}`);
     })
     .then(() => generateBlocksMessageJson(workDir))
     .then(blocksJson => {
@@ -228,5 +228,5 @@ generateInterfaceMessageJson(workDir)
         console.log(`Blocks i18n is created: ${filePath}`);
     })
     .then(() => {
-        console.log('Complete translate proccess');
+        console.log('Complete extract proccess');
     });

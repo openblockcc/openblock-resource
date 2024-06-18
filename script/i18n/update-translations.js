@@ -34,13 +34,11 @@ const INTERFACE_RESOURCE = 'interface';
 const EXTENSION_RESOURCE = 'extensions';
 const BLOCKS_RESOURCE = 'blocks';
 const MODE = 'reviewed';
-const SOURCE_LOCALE = 'en';
 
 const INTERFACE_FILE = 'index.js';
 const BLOCKS_MSGS_FILE = 'msg.json';
-const EXTENSIONS_FILE = 'main.js';
 
-const DIST_FILE = 'msg.json';
+const DIST_FILE = 'translations.js';
 
 const {dir} = parseArgs();
 
@@ -89,17 +87,20 @@ const splitLocales = async localeData => {
             process.exit(1);
         }
 
+        // Filter node_modules folder
+        if (pathName.startsWith('node_modules')) {
+            return Promise.resolve();
+        }
+
+        const resourcePath = path.dirname(pathName);
         if (!dirent.isDirectory() && path.basename(pathName) === INTERFACE_FILE) {
-            const interfaceFile = path.join(path.dirname(pathName), INTERFACE_FILE);
+            const interfaceFile = path.join(resourcePath, INTERFACE_FILE);
 
             const official = isOfficial(interfaceFile);
-
-            // TODO 如果不是 official 则不读取 翻译内容，而是 直接将blocks msg和interface extension中的默认内容直接赋英文。
-            // if (official) {
-            splitedLocales[pathName] = {};
+            splitedLocales[resourcePath] = {};
 
             /* Step1: Generate interface content */
-            splitedLocales[pathName][INTERFACE_RESOURCE] = {};
+            splitedLocales[resourcePath][INTERFACE_RESOURCE] = {};
 
             const indexContent = fs.readFileSync(interfaceFile, 'utf8');
 
@@ -117,79 +118,87 @@ const splitLocales = async localeData => {
 
                 // Read translations from Locales data
                 localeData[INTERFACE_RESOURCE].forEach(translation => {
-                    splitedLocales[pathName][INTERFACE_RESOURCE][translation.locale] = {};
+                    splitedLocales[resourcePath][INTERFACE_RESOURCE][translation.locale] = {};
 
                     interfaceMsgs.forEach(msg => {
                         if (official) {
                             // Read translations from Locales data
-                            splitedLocales[pathName][INTERFACE_RESOURCE][translation.locale][msg.id] = translation.translations[msg.id].message; // eslint-disable-line max-len
+                            splitedLocales[resourcePath][INTERFACE_RESOURCE][translation.locale][msg.id] = translation.translations[msg.id].message; // eslint-disable-line max-len
                         } else {
                             // Directly use data from extracted content
-                            splitedLocales[pathName][INTERFACE_RESOURCE][translation.locale][msg.id] = msg.default; // eslint-disable-line max-len
+                            splitedLocales[resourcePath][INTERFACE_RESOURCE][translation.locale][msg.id] = msg.default; // eslint-disable-line max-len
                         }
                     });
                 });
             }
 
-            /* Step2: Generate extensions content */
-            splitedLocales[pathName][EXTENSION_RESOURCE] = {};
-            const extensionsFile = path.join(path.dirname(pathName), EXTENSIONS_FILE);
+            /* Step2: Generate scratch extensions content */
+            splitedLocales[resourcePath][EXTENSION_RESOURCE] = {};
 
-            if (fs.existsSync(extensionsFile)) {
-                const extensionsContent = fs.readFileSync(extensionsFile, 'utf8');
-                const matchedExtensionsContent = extensionsContent.match(/formatMessage\({([\s\S]*?)}\)/g);
-                if (matchedExtensionsContent) {
-                    const extensionsMsgs = matchedExtensionsContent.map(msg => {
-                        const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                            .replace(/\n/g, '')
-                            .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`) // eslint-disable-line max-len
-                            .replace(/'/g, '"')
-                            .replace(/" *\+ *"/g, ''); // combine addition expression
+            const mainRegex = /\.main\s*=\s*['"](.+?)['"]|main:\s*['"](.+?)['"]/g;
 
-                        return JSON.parse(preproccessedMsg);
-                    });
+            let match;
+            const mainFiles = [];
+            let extensionsContent = '';
 
-                    localeData[EXTENSION_RESOURCE].forEach(translation => {
-                        splitedLocales[pathName][EXTENSION_RESOURCE][translation.locale] = {};
-
-                        extensionsMsgs.forEach(msg => {
-                            // TODO双编程类型的设备翻译及extension文件名称不是translationjs这是个大问题
-                            // 都应该提取出来然后保存到一个文件中
-                            // 翻译文件要不还是改名为msg合适与l10n构架相同
-                            console.log('msg', msg);
-                            if (official) {
-                                console.log('id11111', msg.id);
-                                // Read translations from Locales data
-                                splitedLocales[pathName][EXTENSION_RESOURCE][translation.locale][msg.id] = translation.translations[msg.id].message; // eslint-disable-line max-len
-                            } else {
-                                console.log('msg333', msg.id, msg.default);
-                                // Directly use data from extracted content
-                                splitedLocales[pathName][EXTENSION_RESOURCE][translation.locale][msg.id] = msg.default; // eslint-disable-line max-len
-                            }
-                        });
-
-                    });
+            while ((match = mainRegex.exec(indexContent)) !== null) {
+                mainFiles.push(match[1] || match[2]);
+            }
+            mainFiles.forEach(mainFile => {
+                if (fs.existsSync(path.join(resourcePath, mainFile))) {
+                    extensionsContent += fs.readFileSync(path.join(resourcePath, mainFile), 'utf8');
                 }
+            });
+
+            const matchedExtensionsContent = extensionsContent.match(/formatMessage\({([\s\S]*?)}\)/g);
+            if (matchedExtensionsContent) {
+                const extensionsMsgs = matchedExtensionsContent.map(msg => {
+                    const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
+                        .replace(/\n/g, '')
+                        .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`) // eslint-disable-line max-len
+                        .replace(/'/g, '"')
+                        .replace(/" *\+ *"/g, ''); // combine addition expression
+
+                    return JSON.parse(preproccessedMsg);
+                });
+
+                localeData[EXTENSION_RESOURCE].forEach(translation => {
+                    splitedLocales[resourcePath][EXTENSION_RESOURCE][translation.locale] = {};
+
+                    extensionsMsgs.forEach(msg => {
+                        if (official) {
+                            // Read translations from locales data
+                            splitedLocales[resourcePath][EXTENSION_RESOURCE][translation.locale][msg.id] = translation.translations[msg.id].message; // eslint-disable-line max-len
+                        } else {
+                            // Directly use data from extracted content
+                            splitedLocales[resourcePath][EXTENSION_RESOURCE][translation.locale][msg.id] = msg.default; // eslint-disable-line max-len
+                        }
+                    });
+                });
             }
 
-            // /* Step3: Generate blocks content */
-            // splitedLocales[pathName][BLOCKS_RESOURCE] = {};
+            /* Step3: Generate blocks content */
+            splitedLocales[resourcePath][BLOCKS_RESOURCE] = {};
 
-            // const blocksMsgsFile = path.join(path.dirname(pathName), BLOCKS_MSGS_FILE);
+            const blocksMsgsFile = path.join(resourcePath, BLOCKS_MSGS_FILE);
 
-            // if (fs.existsSync(blocksMsgsFile)) {
-            //     const blocksMsgsKeys = Object.keys(JSON.parse(fs.readFileSync(blocksMsgsFile, 'utf8'))).sort();
+            if (fs.existsSync(blocksMsgsFile)) {
+                const blocksMsgs = JSON.parse(fs.readFileSync(blocksMsgsFile, 'utf8'));
+                const blocksMsgsKeys = Object.keys(blocksMsgs).sort();
 
-            //     localeData[BLOCKS_RESOURCE].forEach(translation => {
-            //         splitedLocales[pathName][BLOCKS_RESOURCE][translation.locale] = {};
+                localeData[BLOCKS_RESOURCE].forEach(translation => {
+                    splitedLocales[resourcePath][BLOCKS_RESOURCE][translation.locale] = {};
 
-            //         blocksMsgsKeys.forEach(key => {
-            //             splitedLocales[pathName][BLOCKS_RESOURCE][translation.locale][key] = translation.translations[key]; // eslint-disable-line max-len
-            //         });
+                    blocksMsgsKeys.forEach(key => {
+                        if (official) {
+                            splitedLocales[resourcePath][BLOCKS_RESOURCE][translation.locale][key] = translation.translations[key]; // eslint-disable-line max-len
+                        } else {
+                            splitedLocales[resourcePath][BLOCKS_RESOURCE][translation.locale][key] = blocksMsgs[`${key}`]; // eslint-disable-line max-len
+                        }
+                    });
 
-            //     });
-            // }
-            // }
+                });
+            }
         }
         return Promise.resolve();
     };
@@ -219,7 +228,6 @@ const generateTranslationsFile = async () => {
                 const interfaceTranslations = JSON.stringify(
                     data[filePath][INTERFACE_RESOURCE], null, 4).replace(/\n/g, '\n    ');
 
-                // const extensionTranslations = '';
                 const extensionTranslations = JSON.stringify(
                     data[filePath][EXTENSION_RESOURCE], null, 4).replace(/\n/g, '\n    ');
 
@@ -238,28 +246,28 @@ const generateTranslationsFile = async () => {
 /* eslint-disable quote-props */
 /* eslint-disable dot-notation */
 /* eslint-disable max-len */
-function getInterfaceMsgs () {
+function getInterfaceTranslations () {
     return ${interfaceTranslations}
     ;
 }
 
-function registerScratchExtensionMsgs () {
+function registerScratchExtensionTranslations () {
     return ${extensionTranslations};
 }
 
-function registerBlocksMsgs (Blockly) { ${blocksMessages}
+function registerBlocksMessages (Blockly) {${blocksMessages}
     return Blockly;
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = {getInterfaceMsgs};
+    module.exports = {getInterfaceTranslations};
 }
-exports = registerScratchExtensionMsgs;
-exports = registerBlocksMsgs;
+exports = registerScratchExtensionTranslations;
+exports = registerBlocksMessages;
 `;
 
-                // fs.writeFileSync(path.resolve(path.dirname(filePath), DIST_FILE), content);
-                console.log(`Blocks msg file is created in path: ${path.resolve(path.dirname(filePath), DIST_FILE)}`); // eslint-disable-line max-len
+                fs.writeFileSync(path.resolve(filePath, DIST_FILE), content);
+                console.log(`Translations file is created in path: ${path.resolve(filePath, DIST_FILE)}`); // eslint-disable-line max-len
             });
         });
 
