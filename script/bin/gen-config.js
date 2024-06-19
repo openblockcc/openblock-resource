@@ -27,6 +27,9 @@ if (version) {
     const originConfig = JSON.parse(fs.readFileSync(path.resolve(workDir, 'config.json'), 'utf8'));
 
     originConfig.version = version;
+    if (version.startsWith('v') || version.startsWith('V')) {
+        originConfig.version = originConfig.version.slice(1);
+    }
 
     fs.writeFileSync(path.resolve(workDir, 'config.json'), JSON.stringify(originConfig, null, 4));
     console.log(`Config file is created: ${path.resolve(workDir, 'config.json')}`);
