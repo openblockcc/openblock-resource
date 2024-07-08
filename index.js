@@ -2,6 +2,7 @@ const fs = require('fs-extra');
 const Emitter = require('events');
 const path = require('path');
 const compareVersions = require('compare-versions');
+const clc = require('cli-color');
 
 const ResourceServer = require('./src/server');
 const ResourceUpdater = require('./src/updater');
@@ -27,13 +28,27 @@ class OpenblockResourceServer extends Emitter{
             this._builtinResourcesPath = path.join(DEFAULT_BUILTIN_RESOURCES_PATH);
         }
 
-        // If 'OpenBlockExternalResources' exists in the upper-level directory, the content in this
-        // directory will be used first, rather than the content in the software installation path.
+        // If the path to OPENBLOCK_EXTERNAL_RESOURCES is set in the environment variable, or there
+        // is an OpenBlockExternalResources folder in the same directory as the software installation directory,
+        // the content in this path or directory will be used first, rather than the content in the software
+        // installation path.
         // This method is used when customizing by a third-party manufacturer, so as to avoid overwriting
         // the content of the third - party manufacturer when updating the software.
-        const thirdPartyResourcesPath = path.join(this._builtinResourcesPath, '../../OpenBlockExternalResources');
-        if (fs.existsSync(thirdPartyResourcesPath)) {
-            this._builtinResourcesPath = thirdPartyResourcesPath;
+        // For MAC or Linux devices, it is not practical to use a path relative to the installation
+        // directory to store OpenBlockExternalResources, so we will scan the external resources path
+        // set in the environment variable first.
+        const envOpenBlockExternalResources = process.env.OPENBLOCK_EXTERNAL_RESOURCES;
+        if (envOpenBlockExternalResources) {
+            this._builtinResourcesPath = envOpenBlockExternalResources;
+        } else {
+            const thirdPartyResourcesPath = path.join(this._builtinResourcesPath, '../../OpenBlockExternalResources');
+            if (fs.existsSync(thirdPartyResourcesPath)) {
+                this._builtinResourcesPath = thirdPartyResourcesPath;
+            }
+        }
+
+        if (!fs.existsSync(this._builtinResourcesPath)) {
+            console.error(clc.red(`The external resource path does not exist: ${this._builtinResourcesPath}`));
         }
 
         if (fs.existsSync(this._cacheResourcesPath)) {
