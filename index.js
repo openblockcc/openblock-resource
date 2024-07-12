@@ -39,10 +39,13 @@ class OpenblockResourceServer extends Emitter{
         // set in the environment variable first.
         const envOpenBlockExternalResources = process.env.OPENBLOCK_EXTERNAL_RESOURCES;
         if (envOpenBlockExternalResources) {
+            console.info(`env OPENBLOCK_EXTERNAL_RESOURCES: \
+"${envOpenBlockExternalResources}"`);
             this._builtinResourcesPath = envOpenBlockExternalResources;
         } else {
             const thirdPartyResourcesPath = path.join(this._builtinResourcesPath, '../../OpenBlockExternalResources');
             if (fs.existsSync(thirdPartyResourcesPath)) {
+                console.info('The OpenBlockExternalResources folder is detected in the parent directory');
                 this._builtinResourcesPath = thirdPartyResourcesPath;
             }
         }
@@ -97,6 +100,8 @@ class OpenblockResourceServer extends Emitter{
 
     listen (port = null) {
         const server = new ResourceServer(this._cacheResourcesPath, this._builtinResourcesPath);
+        console.info(`cached external resources path: "${this._cacheResourcesPath}"`);
+        console.info(`builtin external resources path: "${this._builtinResourcesPath}"`);
 
         server.on('error', e => {
             this.emit('error', e);
