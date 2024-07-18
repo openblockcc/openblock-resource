@@ -247,8 +247,7 @@ const generateTranslationsFile = async () => {
 /* eslint-disable dot-notation */
 /* eslint-disable max-len */
 function getInterfaceTranslations () {
-    return ${interfaceTranslations}
-    ;
+    return ${interfaceTranslations};
 }
 
 function registerScratchExtensionTranslations () {
