@@ -156,33 +156,37 @@ const searchBlocksFormatMessages = (err, pathName, dirent) => {
             }
 
             const msgKeys = blocksMsgKeys.concat(toolboxMsgKeys);
-            const msgJsonFileData = JSON.parse(fs.readFileSync(path.join(path.dirname(pathName),
-                BLOCKS_MSGS_FILE), 'utf8'));
-            if (msgKeys) {
-                if (!msgJsonFileData) {
-                    console.error(`Missing translationfile ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)}`);
-                    process.exit(1);
+            if (fs.existsSync(path.join(path.dirname(pathName), BLOCKS_MSGS_FILE))) {
+                const msgJsonFileData = JSON.parse(fs.readFileSync(path.join(path.dirname(pathName),
+                    BLOCKS_MSGS_FILE), 'utf8'));
+                if (msgKeys) {
+                    if (!msgJsonFileData) {
+                        console.warn(`Translationfile ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)} is empty`);
+                    }
+
+                    // Check if there is unused message in the json file.
+                    Object.keys(msgJsonFileData).forEach(key => {
+                        if (!msgKeys.includes(key)) {
+                            console.warn(`\x1B[33mFind unused message: "${key}" in file: ${pathName}\x1B[0m`);
+                        }
+                    });
+
+                    msgKeys.forEach(magKey => {
+                        if (magKey.toUpperCase() !== magKey) {
+                            console.warn(`${magKey} is not upper case`);
+                        }
+
+                        if (msgJsonFileData[magKey]) {
+                            blocksFormatMessages[magKey] = msgJsonFileData[magKey];
+                        } else {
+                            console.error(`Missing ${magKey} in ${path.join(path.dirname(pathName),
+                                BLOCKS_MSGS_FILE)}`);
+                            process.exit(1);
+                        }
+                    });
                 }
-
-                // Check if there is unused message in the json file.
-                Object.keys(msgJsonFileData).forEach(key => {
-                    if (!msgKeys.includes(key)) {
-                        console.warn(`\x1B[33mFind unused message: "${key}" in file: ${pathName}\x1B[0m`);
-                    }
-                });
-
-                msgKeys.forEach(magKey => {
-                    if (magKey.toUpperCase() !== magKey) {
-                        console.warn(`${magKey} is not upper case`);
-                    }
-
-                    if (msgJsonFileData[magKey]) {
-                        blocksFormatMessages[magKey] = msgJsonFileData[magKey];
-                    } else {
-                        console.error(`Missing ${magKey} in ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)}`);
-                        process.exit(1);
-                    }
-                });
+            } else {
+                console.warn(`Missing translationfile ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)}`);
             }
         }
     }
