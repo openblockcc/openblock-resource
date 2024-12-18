@@ -54,7 +54,7 @@ class OpenblockResourceServer extends Emitter{
             console.error(clc.red(`The external resource path does not exist: ${this._builtinResourcesPath}`));
         }
 
-        if (fs.existsSync(this._cacheResourcesPath)) {
+        if (fs.existsSync(path.join(this._cacheResourcesPath, 'config.json'))) {
             this._configPath = path.join(this._cacheResourcesPath, 'config.json');
         } else {
             this._configPath = path.join(this._builtinResourcesPath, 'config.json');
