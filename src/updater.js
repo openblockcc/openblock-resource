@@ -176,19 +176,8 @@ class ResourceUpdater {
             checksumUrl = `https://${this._config.name}.${this._config.region}.digitaloceanspaces.com/${this._config.path}/${checksumName}`;
 
         } else if (this._provider === 'gitee') {
-            if (this.releaseInfo) {
-                for (const idx in this.releaseInfo.assets) {
-                    const info = this.releaseInfo.assets[idx];
-                    const name = info.name;
-                    if (!name) {
-                        continue;
-                    } if (name.indexOf('external-resources') !== -1) {
-                        resourceUrl = `${info.browser_download_url}/${info.name}`;
-                    } else if (name.indexOf('checksums-sha256') !== -1) {
-                        checksumUrl = `${info.browser_download_url}/${info.name}`;
-                    }
-                }
-            }
+            resourceUrl = `https://gitee.com/${this._config.repo}/releases/download/${version}/${resourceName}`;
+            checksumUrl = `https://gitee.com/${this._config.repo}/releases/download/${version}/${checksumName}`;
         }
 
         const resourcePath = path.join(downloadPath, resourceName);
