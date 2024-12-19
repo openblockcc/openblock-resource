@@ -156,4 +156,7 @@ getLatest()
             });
 
     })
-    .catch(err => console.log(clc.red(`ERR!: ${err}`)));
+    .catch(err => {
+        console.log(clc.red(`ERR!: ${err}`));
+        process.exit(1);
+    });
