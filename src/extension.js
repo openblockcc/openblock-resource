@@ -49,6 +49,7 @@ class OpenBlockExtension {
                     content.toolbox = path.join(basePath, content.toolbox);
                 }
                 if (content.library) {
+                    // Used directly by the toolchain and uploader, requires an absolute address
                     content.library = path.join(dataPath, basePath, content.library);
                 }
                 if (content.main) {
