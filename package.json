@@ -9,7 +9,8 @@
     "upload-file": "./script/bin/upload-file.mjs",
     "i18n-extract": "./script/i18n/extract-format-message.js",
     "i18n-push": "./script/i18n/push-format-message.js",
-    "i18n-update": "./script/i18n/update-translations.js"
+    "i18n-update": "./script/i18n/update-translations.js",
+    "arduino-staging": "script/bin/arduino-staging.js"
   },
   "scripts": {
     "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v3 --plat=github",
@@ -35,7 +36,9 @@
     "@root/walk": "^1.1.0",
     "@transifex/api": "^7.1.1",
     "cli-color": "^2.0.4",
+    "commander": "^13.0.0",
     "compare-versions": "^3.6.0",
+    "crypto": "^1.0.1",
     "download": "^8.0.0",
     "express": "^4.17.1",
     "extract-zip": "^2.0.1",
@@ -43,6 +46,7 @@
     "format-message-parse": "^6.2.4",
     "fs-extra": "^10.1.0",
     "hash-files": "^1.1.1",
+    "https": "^1.0.0",
     "lodash": "^4.17.21",
     "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.7.0",
