@@ -17,6 +17,7 @@ const {txPull} = require('openblock-l10n/lib/transifex.js');
 const validateTranslations = require('../lib/validate');
 const parseArgs = require('../lib/parseArgs');
 const isOfficial = require('../lib/is-official');
+const parseFormatMessageContent = require('./utils');
 
 const usage = `
  Pull supported language translations from Transifex. Usage:
@@ -114,15 +115,7 @@ const splitLocales = async localeData => {
 
             const matchedIndexContent = indexContent.match(/formatMessage\({([\s\S]*?)}\)/g);
             if (matchedIndexContent) {
-                const interfaceMsgs = matchedIndexContent.map(msg => {
-                    const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                        .replace(/\n/g, '')
-                        .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`)
-                        .replace(/'/g, '"')
-                        .replace(/" *\+ *"/g, ''); // combine addition expression
-
-                    return JSON.parse(preproccessedMsg);
-                });
+                const interfaceMsgs = matchedIndexContent.map(msg => parseFormatMessageContent(msg));
 
                 // Read translations from Locales data
                 localeData[INTERFACE_RESOURCE].forEach(translation => {
@@ -160,15 +153,7 @@ const splitLocales = async localeData => {
 
             const matchedExtensionsContent = extensionsContent.match(/formatMessage\({([\s\S]*?)}\)/g);
             if (matchedExtensionsContent) {
-                const extensionsMsgs = matchedExtensionsContent.map(msg => {
-                    const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                        .replace(/\n/g, '')
-                        .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`) // eslint-disable-line max-len
-                        .replace(/'/g, '"')
-                        .replace(/" *\+ *"/g, ''); // combine addition expression
-
-                    return JSON.parse(preproccessedMsg);
-                });
+                const extensionsMsgs = matchedExtensionsContent.map(msg => parseFormatMessageContent(msg));
 
                 localeData[EXTENSION_RESOURCE].forEach(translation => {
                     splitedLocales[resourcePath][EXTENSION_RESOURCE][translation.locale] = {};

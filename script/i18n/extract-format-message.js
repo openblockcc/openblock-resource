@@ -13,6 +13,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const parseArgs = require('../lib/parseArgs');
 const isOfficial = require('../lib/is-official');
+const parseFormatMessageContent = require('./utils');
 
 const INTERFACE_FILE = 'index.js';
 const EXTENSIONS_FILE = 'main.js';
@@ -37,13 +38,8 @@ const searchInterfaceFormatMessages = (err, pathName, dirent) => {
             const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
             if (matchedContent) {
                 matchedContent.forEach(msg => {
-                    const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                        .replace(/\n/g, '')
-                        .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`)
-                        .replace(/'/g, '"')
-                        .replace(/" *\+ *"/g, ''); // combine addition expression
                     try {
-                        const msgObj = JSON.parse(preproccessedMsg);
+                        const msgObj = parseFormatMessageContent(msg);
                         interfaceFormatMessages.push(msgObj);
                     } catch (e) {
                         console.error(`Error parsing ${msg} in ${pathName}: ${e}`);
@@ -93,13 +89,8 @@ const searchExtensionsFormatMessages = (err, pathName, dirent) => {
                 const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
                 if (matchedContent) {
                     matchedContent.forEach(msg => {
-                        const preproccessedMsg = msg.slice(msg.indexOf('(') + 1, msg.lastIndexOf(')'))
-                            .replace(/\n/g, '')
-                            .replace(/(\w+:)/g, matchedStr => `"${matchedStr.substring(0, matchedStr.length - 1)}":`)
-                            .replace(/'/g, '"')
-                            .replace(/" *\+ *"/g, ''); // combine addition expression
                         try {
-                            const msgObj = JSON.parse(preproccessedMsg);
+                            const msgObj = parseFormatMessageContent(msg);
                             extensionsFormatMessages.push(msgObj);
                         } catch (e) {
                             console.error(`Error parsing ${msg} in ${pathName}: ${e}`);
