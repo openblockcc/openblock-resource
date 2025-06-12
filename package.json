@@ -13,7 +13,7 @@
     "arduino-staging": "script/bin/arduino-staging.js"
   },
   "scripts": {
-    "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v3 --plat=github",
+    "fetch": "rimraf external-resources download && node script/download.js --repo=openblockcc/external-resources-v3",
     "start": "node ./test/start-server.js",
     "start:clear": "rimraf ../.openblockData/external-resources && node ./test/start-server.js",
     "clean": "rimraf external-resources dist translation download ../.openblockData/external-resources",
@@ -40,6 +40,7 @@
     "compare-versions": "^3.6.0",
     "crypto": "^1.0.1",
     "download": "^8.0.0",
+    "download-github-release": "^0.3.2",
     "express": "^4.17.1",
     "extract-zip": "^2.0.1",
     "format-message": "^6.2.3",
