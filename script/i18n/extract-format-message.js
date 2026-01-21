@@ -2,226 +2,250 @@
 
 /**
  * @fileoverview
- * Extract i18n content in external resource.
+ * Extract i18n content from plugin.
  *
- * The default scan path is the path where the current command is executed,
- * but you can use --dir to specify the download address, e.g: --dir=external-resources
+ * Extraction sources:
+ * 1. package.json - openblock.l10n fields
+ * 2. main - formatMessage() calls
+ * 3. msg- Block message definitions
+ *
+ * Output files:
+ * - translations/interface/en.json
+ * - translations/extensions/en.json
+ * - translations/blocks/en.json
+ *
+ * Usage:
+ *   node extract-translations.js [--dir=path/to/resources]
  */
 
-const Walk = require('@root/walk');
-const path = require('path');
 const fs = require('fs-extra');
-const parseArgs = require('../lib/parseArgs');
-const isOfficial = require('../lib/is-official');
-const parseFormatMessageContent = require('./utils');
+const path = require('path');
 
-const INTERFACE_FILE = 'index.js';
-const EXTENSIONS_FILE = 'main.js';
-const BLOCKS_FILE = 'blocks.js';
-const TOOLBOX_FILE = 'toolbox.js';
-const BLOCKS_MSGS_FILE = 'msg.json';
-
-const interfaceFormatMessages = [];
-
-const searchInterfaceFormatMessages = (err, pathName, dirent) => {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    if (!pathName.startsWith('extensions') && !pathName.startsWith('devices')) {
-        return Promise.resolve();
-    }
-
-    if (!dirent.isDirectory() && path.basename(pathName) === INTERFACE_FILE) {
-        if (isOfficial(pathName)) {
-            const content = fs.readFileSync(pathName, 'utf8');
-            const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
-            if (matchedContent) {
-                matchedContent.forEach(msg => {
-                    try {
-                        const msgObj = parseFormatMessageContent(msg);
-                        interfaceFormatMessages.push(msgObj);
-                    } catch (e) {
-                        console.error(`Error parsing ${msg} in ${pathName}: ${e}`);
-                        process.exit(1);
-                    }
-                });
-            }
+/**
+ * Parse command line arguments
+ * @returns {object} Parsed arguments
+ */
+const parseArgs = () => {
+    const args = {};
+    process.argv.slice(2).forEach(arg => {
+        if (arg.startsWith('--')) {
+            const [key, value] = arg.slice(2).split('=');
+            args[key] = value || true;
         }
-    }
-    return Promise.resolve();
+    });
+    return args;
 };
-
-const generateInterfaceMessageJson = dir => new Promise(resolve => {
-    Walk.walk(path.join(dir), searchInterfaceFormatMessages)
-        .then(() => {
-            const interfaceMsg = {};
-            interfaceFormatMessages.forEach(msg => {
-                interfaceMsg[msg.id] = {
-                    message: msg.default,
-                    description: msg.default ? msg.default : null
-                };
-            });
-
-            const interfaceJson = JSON.stringify(interfaceMsg, null, 4);
-            return resolve(interfaceJson);
-        });
-});
-
-const extensionsFormatMessages = [];
-
-const searchExtensionsFormatMessages = (err, pathName, dirent) => {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    if (!pathName.startsWith('extensions') && !pathName.startsWith('devices')) {
-        return Promise.resolve();
-    }
-
-    if (!dirent.isDirectory() && path.extname(pathName) === '.js') {
-        const containsDeviceRegister = fs.readFileSync(pathName, 'utf8').slice(0, 100)
-            .match(/registerDevice/g);
-
-        if ((path.basename(pathName) === EXTENSIONS_FILE) || containsDeviceRegister) {
-            if (isOfficial(pathName)) {
-                const content = fs.readFileSync(pathName, 'utf8');
-                const matchedContent = content.match(/formatMessage\({([\s\S]*?)}\)/g);
-                if (matchedContent) {
-                    matchedContent.forEach(msg => {
-                        try {
-                            const msgObj = parseFormatMessageContent(msg);
-                            extensionsFormatMessages.push(msgObj);
-                        } catch (e) {
-                            console.error(`Error parsing ${msg} in ${pathName}: ${e}`);
-                            process.exit(1);
-                        }
-                    });
-                }
-            }
-        }
-    }
-    return Promise.resolve();
-};
-
-const generateExtensionsMessageJson = dir => new Promise(resolve => {
-    Walk.walk(path.join(dir), searchExtensionsFormatMessages)
-        .then(() => {
-            const extensionsMsg = {};
-            extensionsFormatMessages.forEach(msg => {
-                extensionsMsg[msg.id] = {
-                    message: msg.default,
-                    description: msg.default ? msg.default : null
-                };
-            });
-
-            const extensionsJson = JSON.stringify(extensionsMsg, null, 4);
-            return resolve(extensionsJson);
-        });
-});
-
-const blocksFormatMessages = {};
-
-const searchBlocksFormatMessages = (err, pathName, dirent) => {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    if (!pathName.startsWith('extensions') && !pathName.startsWith('devices')) {
-        return Promise.resolve();
-    }
-
-    if (!dirent.isDirectory() && path.basename(pathName) === BLOCKS_FILE) {
-        if (isOfficial(pathName)) {
-            const blocksContent = fs.readFileSync(pathName, 'utf8');
-            let blocksMsgKeys = blocksContent.match(/Blockly.Msg.\w+/g);
-            if (blocksMsgKeys) {
-                blocksMsgKeys = blocksMsgKeys.map(key => key.slice(key.lastIndexOf('.') + 1));
-            }
-
-            const toolboxContent = fs.readFileSync(path.resolve(path.dirname(pathName),
-                TOOLBOX_FILE), 'utf8');
-            let toolboxMsgKeys = toolboxContent.match(/%{BKY_\w+_\w+}/g);
-            if (toolboxMsgKeys) {
-                toolboxMsgKeys = toolboxMsgKeys.map(key => key.slice(key.indexOf('_') + 1, -1));
-            }
-
-            const msgKeys = blocksMsgKeys.concat(toolboxMsgKeys);
-            if (fs.existsSync(path.join(path.dirname(pathName), BLOCKS_MSGS_FILE))) {
-                const msgJsonFileData = JSON.parse(fs.readFileSync(path.join(path.dirname(pathName),
-                    BLOCKS_MSGS_FILE), 'utf8'));
-                if (msgKeys) {
-                    if (!msgJsonFileData) {
-                        console.warn(`Translationfile ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)} is empty`);
-                    }
-
-                    // Check if there is unused message in the json file.
-                    Object.keys(msgJsonFileData).forEach(key => {
-                        if (!msgKeys.includes(key)) {
-                            console.warn(`\x1B[33mFind unused message: "${key}" in file: ${pathName}\x1B[0m`);
-                        }
-                    });
-
-                    msgKeys.forEach(magKey => {
-                        if (magKey.toUpperCase() !== magKey) {
-                            console.warn(`${magKey} is not upper case`);
-                        }
-
-                        if (msgJsonFileData[magKey]) {
-                            blocksFormatMessages[magKey] = msgJsonFileData[magKey];
-                        } else {
-                            console.error(`Missing ${magKey} in ${path.join(path.dirname(pathName),
-                                BLOCKS_MSGS_FILE)}`);
-                            process.exit(1);
-                        }
-                    });
-                }
-            } else {
-                console.warn(`Missing translationfile ${path.join(path.dirname(pathName), BLOCKS_MSGS_FILE)}`);
-            }
-        }
-    }
-    return Promise.resolve();
-};
-
-const generateBlocksMessageJson = dir => new Promise(resolve => {
-    Walk.walk(path.join(dir), searchBlocksFormatMessages)
-        .then(() => {
-            const blocksJson = JSON.stringify(blocksFormatMessages, null, 4);
-            return resolve(blocksJson);
-        });
-});
 
 const {dir} = parseArgs();
+const workDir = dir || './';
 
-let workDir;
-if (dir) {
-    workDir = dir;
-} else {
-    workDir = './';
-}
+// ============================================================================
+// Utilities
+// ============================================================================
 
-generateInterfaceMessageJson(workDir)
-    .then(interfaceJson => {
-        const filePath = path.resolve(workDir, 'translations/interface/en.json');
-        fs.ensureDirSync(path.dirname(filePath));
-        fs.writeFileSync(filePath, interfaceJson);
-        console.log(`Interface i18n is created: ${filePath}`);
-    })
-    .then(() => generateExtensionsMessageJson(workDir))
-    .then(extensionJson => {
-        const filePath = path.resolve(workDir, 'translations/extensions/en.json');
-        fs.ensureDirSync(path.dirname(filePath));
-        fs.writeFileSync(filePath, extensionJson);
-        console.log(`Scrartch extensions i18n is created: ${filePath}`);
-    })
-    .then(() => generateBlocksMessageJson(workDir))
-    .then(blocksJson => {
-        const filePath = path.resolve(workDir, 'translations/blocks/en.json');
-        fs.ensureDirSync(path.dirname(filePath));
-        fs.writeFileSync(filePath, blocksJson);
-        console.log(`Blocks i18n is created: ${filePath}`);
-    })
-    .then(() => {
-        console.log('Complete extract proccess');
-    });
+/**
+ * Parse formatMessage({id, default}) calls from JS content
+ * @param {string} content - JavaScript source code content
+ * @returns {Array<{id: string, default: string}>} Array of extracted messages
+ */
+const extractFormatMessages = content => {
+    const messages = [];
+    const regex = /formatMessage\s*\(\s*\{([^}]+)\}\s*\)/g;
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+        try {
+            // Extract the object content and parse it
+            const objContent = `{${match[1]}}`;
+            // Convert single quotes to double quotes and handle keys
+            const normalized = objContent
+                .replace(/'/g, '"')
+                .replace(/(\w+):/g, '"$1":');
+            const parsed = JSON.parse(normalized);
+
+            if (parsed.id && parsed.default) {
+                messages.push({
+                    id: parsed.id,
+                    default: parsed.default
+                });
+            }
+        } catch (e) {
+            console.warn(`Failed to parse formatMessage: ${match[0]}`);
+        }
+    }
+    return messages;
+};
+
+
+// ============================================================================
+// Resource Scanners
+// ============================================================================
+
+/**
+ * Scan a single plugin directory
+ * @param {string} pluginDir - Path to the plugin directory
+ * @returns {{interface: Array, extensions: Array, blocks: object}} Extracted translation data
+ */
+const scanPlugin = pluginDir => {
+    const result = {
+        interface: [],
+        extensions: [],
+        blocks: {}
+    };
+
+    // 1. Extract from package.json
+    const packageJsonPath = path.join(pluginDir, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+        try {
+            const pkg = fs.readJsonSync(packageJsonPath);
+            const openblock = pkg.openblock;
+
+            if (openblock) {
+                const resourceId = openblock.extensionId || openblock.deviceId;
+
+                // Interface translations - extract from name and description
+                if (pkg.name) {
+                    result.interface.push({
+                        id: `${resourceId}.name`,
+                        default: pkg.name
+                    });
+                }
+                if (pkg.description) {
+                    result.interface.push({
+                        id: `${resourceId}.description`,
+                        default: pkg.description
+                    });
+                }
+            }
+        } catch (e) {
+            console.error(`Failed to parse ${packageJsonPath}:`, e.message);
+        }
+    }
+
+    // 2. Extract from main and msg (using paths from package.json)
+    if (packageJsonPath && fs.existsSync(packageJsonPath)) {
+        try {
+            const pkg = fs.readJsonSync(packageJsonPath);
+            const files = pkg.openblock?.files || {};
+
+            // Extract from main
+            if (files.main) {
+                const mainJsPath = files.main.replace(/^dist\//, 'src/');
+                const fullMainPath = path.join(pluginDir, mainJsPath);
+                if (fs.existsSync(fullMainPath)) {
+                    const content = fs.readFileSync(fullMainPath, 'utf8');
+                    result.extensions.push(...extractFormatMessages(content));
+                }
+            }
+
+            // Extract from msg
+            if (files.msg) {
+                const msgJsonPath = path.join(pluginDir, files.msg);
+                if (fs.existsSync(msgJsonPath)) {
+                    try {
+                        const msgJson = fs.readJsonSync(msgJsonPath);
+                        Object.assign(result.blocks, msgJson);
+                    } catch (e) {
+                        console.error(`Failed to parse ${msgJsonPath}:`, e.message);
+                    }
+                }
+            }
+        } catch (e) {
+            // Already logged in step 1
+        }
+    }
+
+    return result;
+};
+
+/**
+ * Scan all plugins in extensions/ and devices/ directories
+ * @returns {{interface: object, extensions: object, blocks: object}} All extracted translations
+ */
+const scanAllPlugins = () => {
+    const allResults = {
+        interface: {},
+        extensions: {},
+        blocks: {}
+    };
+
+    const resourceTypes = ['extensions', 'devices'];
+
+    for (const type of resourceTypes) {
+        const typeDir = path.join(workDir, type);
+        if (!fs.existsSync(typeDir)) {
+            console.log(`Skipping ${type}/ (not found)`);
+            continue;
+        }
+
+        const plugins = fs.readdirSync(typeDir, {withFileTypes: true})
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => dirent.name);
+
+        console.log(`Scanning ${plugins.length} resouces in ${type}/`);
+
+        for (const pluginName of plugins) {
+            const pluginDir = path.join(typeDir, pluginName);
+            const result = scanPlugin(pluginDir);
+
+            // Merge interface messages
+            result.interface.forEach(msg => {
+                allResults.interface[msg.id] = {
+                    message: msg.default,
+                    description: msg.default
+                };
+            });
+
+            // Merge extension messages
+            result.extensions.forEach(msg => {
+                allResults.extensions[msg.id] = {
+                    message: msg.default,
+                    description: msg.default
+                };
+            });
+
+            // Merge block messages
+            Object.assign(allResults.blocks, result.blocks);
+        }
+    }
+
+    return allResults;
+};
+
+// ============================================================================
+// Main
+// ============================================================================
+
+/**
+ * Main function to extract translations and write to files
+ */
+const main = () => {
+    console.log(`Extracting translations from: ${path.resolve(workDir)}\n`);
+
+    const results = scanAllPlugins();
+
+    // Write interface translations
+    const interfacePath = path.join(workDir, 'translations/interface/en.json');
+    fs.ensureDirSync(path.dirname(interfacePath));
+    fs.writeJsonSync(interfacePath, results.interface, {spaces: 4});
+    console.log(`\n✓ Interface translations: ${interfacePath}`);
+    console.log(`  ${Object.keys(results.interface).length} messages`);
+
+    // Write extension translations
+    const extensionsPath = path.join(workDir, 'translations/extensions/en.json');
+    fs.ensureDirSync(path.dirname(extensionsPath));
+    fs.writeJsonSync(extensionsPath, results.extensions, {spaces: 4});
+    console.log(`\n✓ Extension translations: ${extensionsPath}`);
+    console.log(`  ${Object.keys(results.extensions).length} messages`);
+
+    // Write block translations
+    const blocksPath = path.join(workDir, 'translations/blocks/en.json');
+    fs.ensureDirSync(path.dirname(blocksPath));
+    fs.writeJsonSync(blocksPath, results.blocks, {spaces: 4});
+    console.log(`\n✓ Block translations: ${blocksPath}`);
+    console.log(`  ${Object.keys(results.blocks).length} messages`);
+
+    console.log('\n✓ Extraction complete!');
+};
+
+main();

@@ -1,114 +1,74 @@
-const requireAll = require('require-all');
 const path = require('path');
 const fs = require('fs');
+const OpenBlockResource = require('./resource');
 
 const TYPE = 'devices';
+
+// Path fields configuration for devices
+const PATH_FIELDS = {
+    relative: ['iconURL', 'connectionIconURL', 'connectionSmallIconURL', 'main', 'translations'],
+    absolute: ['firmware', 'arduinoData'] // Used directly by the toolchain and uploader
+};
 
 /**
  * A server to provide local devices resource.
  */
-class OpenBlockDevice {
+class OpenBlockDevice extends OpenBlockResource {
 
     constructor () {
-        this.type = TYPE;
+        super(TYPE, PATH_FIELDS);
     }
 
-    assembleData (dataPath, formatMessage) {
-        let devicesThumbnailData = [];
-
+    /**
+     * Assemble device data with ordering support
+     * @param {string} dataPath - Path to data directory
+     * @returns {object[]} Array of device data
+     */
+    assembleData (dataPath) {
         if (!fs.existsSync(dataPath)) {
+            return [];
+        }
+
+        // Use parent class to load all devices
+        let devicesThumbnailData = super.assembleData(dataPath);
+
+        // Apply device ordering if index.js exists
+        devicesThumbnailData = this._applyDeviceOrdering(dataPath, devicesThumbnailData);
+
+        return devicesThumbnailData;
+    }
+
+    /**
+     * Apply device ordering based on index.js configuration
+     * @param {string} dataPath - Path to data directory
+     * @param {object[]} devicesThumbnailData - Array of device data
+     * @returns {object[]} Ordered array of device data
+     * @private
+     */
+    _applyDeviceOrdering (dataPath, devicesThumbnailData) {
+        const deviceIndexPath = path.join(dataPath, this.type, 'index.js');
+
+        if (!fs.existsSync(deviceIndexPath)) {
             return devicesThumbnailData;
         }
 
-        const deviceResourcePath = path.join(dataPath, this.type);
-        if (fs.existsSync(deviceResourcePath)) {
-            const data = requireAll({dirname: deviceResourcePath, filter: /index.js$/, recursive: true});
-            Object.entries(data).forEach(dev => {
-                // Filter out index files in the specified device order
-                if (dev[0] === 'index.js') {
-                    return;
-                }
+        // Clear require cache to get fresh index
+        delete require.cache[require.resolve(deviceIndexPath)];
+        // eslint-disable-next-line global-require
+        const index = require(deviceIndexPath);
 
-                const translationsFile = path.join(deviceResourcePath, dev[0], 'translations.js');
-                let translations;
-                if (fs.existsSync(translationsFile)) {
-                    // eslint-disable-next-line global-require
-                    const locales = require(translationsFile);
-                    translations = locales.getInterfaceTranslations();
-                    formatMessage.setup({
-                        translations: translations
-                    });
-                }
+        // Flatten the index (supports nested arrays for grouping)
+        const flatIndex = index.flat(Infinity);
 
-                const content = dev[1]['index.js'](formatMessage);
-
-                const processDeviceData = deviceData => {
-                    const basePath = path.join(this.type, dev[0]);
-
-                    // Convert a local file path to a network address
-                    if (deviceData.iconURL) {
-                        deviceData.iconURL = path.join(basePath, deviceData.iconURL);
-                    }
-                    if (deviceData.connectionIconURL) {
-                        deviceData.connectionIconURL = path.join(basePath, deviceData.connectionIconURL);
-                    }
-                    if (deviceData.connectionSmallIconURL) {
-                        deviceData.connectionSmallIconURL = path.join(basePath,
-                            deviceData.connectionSmallIconURL);
-                    }
-                    if (deviceData.main) {
-                        deviceData.main = path.join(basePath, deviceData.main);
-                    }
-                    if (deviceData.translations) {
-                        deviceData.translations = path.join(basePath, deviceData.translations);
-                    }
-                    if (deviceData.firmware) {
-                        // Used directly by the toolchain and uploader, requires an absolute address
-                        deviceData.firmware = path.join(dataPath, basePath, deviceData.firmware);
-                    }
-                    if (deviceData.arduinoData) {
-                        // Used directly by the toolchain and uploader, requires an absolute address
-                        deviceData.arduinoData = path.join(dataPath, basePath, deviceData.arduinoData);
-                    }
-                    devicesThumbnailData.push(deviceData);
-                };
-
-                // Support for multiple frameworks device data
-                if (content.length > 1) {
-                    content.forEach(deviceData => {
-                        processDeviceData(deviceData);
-                    });
-                } else {
-                    processDeviceData(content);
-                }
-            });
-        }
-
-        const deviceIndexPath = path.join(dataPath, this.type, 'index.js');
-        if (fs.existsSync(deviceIndexPath)) {
-            const flatIndex = [];
-            // eslint-disable-next-line global-require
-            const index = require(path.join(dataPath, this.type, 'index.js'));
-            index.forEach(deviceId => {
-                if (typeof deviceId === 'object') {
-                    deviceId.forEach(id => {
-                        flatIndex.push(id);
-                    });
-                } else {
-                    flatIndex.push(deviceId);
-                }
-            });
-
-            devicesThumbnailData = flatIndex.map(deviceId => {
-                const matchedItem = devicesThumbnailData.find(item => item.deviceId === deviceId);
-                if (matchedItem) {
-                    matchedItem.isOrdered = true;
-                    return matchedItem;
-                }
-                return {deviceId: deviceId, isOrdered: true};
-            });
-        }
-        return devicesThumbnailData;
+        // Map devices according to the order specified in index
+        return flatIndex.map(deviceId => {
+            const matchedItem = devicesThumbnailData.find(item => item.deviceId === deviceId);
+            if (matchedItem) {
+                matchedItem.isOrdered = true;
+                return matchedItem;
+            }
+            return {deviceId: deviceId, isOrdered: true};
+        });
     }
 }
 

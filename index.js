@@ -43,11 +43,12 @@ class OpenblockResourceServer extends Emitter{
 "${envOpenBlockExternalResources}"`);
             this._builtinResourcesPath = envOpenBlockExternalResources;
         } else {
-            const thirdPartyResourcesPath = path.join(this._builtinResourcesPath,
-                '../../OpenBlockExternalResources/config.json');
-            if (fs.existsSync(thirdPartyResourcesPath)) {
+            const thirdPartyResourcesDir = path.join(this._builtinResourcesPath,
+                '../../OpenBlockExternalResources');
+            const thirdPartyConfigPath = path.join(thirdPartyResourcesDir, 'config.json');
+            if (fs.existsSync(thirdPartyConfigPath)) {
                 console.info('The OpenBlockExternalResources folder is detected in the parent directory');
-                this._builtinResourcesPath = thirdPartyResourcesPath;
+                this._builtinResourcesPath = thirdPartyResourcesDir;
             }
         }
 

@@ -1,4 +1,3 @@
-const formatMessage = require('format-message');
 const express = require('express');
 const Emitter = require('events');
 const fetch = require('node-fetch');
@@ -35,9 +34,8 @@ class ResourceServer extends Emitter{
         this.extensions = new OpenBlockExtension();
         this.devices = new OpenBlockDevice();
 
-        this._formatMessage = {};
-        this.deviceIndexData = {};
-        this.extensionsIndexData = {};
+        this.deviceData = null;
+        this.extensionData = null;
     }
 
     // If the id is the same, cached data is used first
@@ -53,25 +51,19 @@ class ResourceServer extends Emitter{
         return Array.from(resultMap.values());
     }
 
-    // If the cache is not exist, generate it.
-    generateCache (locale) {
-        if (this.deviceIndexData[`${locale}`] &&
-            this.extensionsIndexData[`${locale}`]) {
-            return;
-        }
+    /**
+     * Assemble all resource data at startup
+     */
+    assembleData () {
+        const cacheDevices = this.devices.assembleData(this._cacheResourcesPath);
+        const builtinDevices = this.devices.assembleData(this._builtinResourcesPath);
+        const cacheExtensions = this.extensions.assembleData(this._cacheResourcesPath);
+        const builtinExtensions = this.extensions.assembleData(this._builtinResourcesPath);
 
-        this._formatMessage = formatMessage.namespace();
-        this._formatMessage.setup({
-            locale: locale
-        });
+        this.deviceData = JSON.stringify(this.mergeData(cacheDevices, builtinDevices, 'deviceId'));
+        this.extensionData = JSON.stringify(this.mergeData(cacheExtensions, builtinExtensions, 'extensionId'));
 
-        this.deviceIndexData[`${locale}`] =
-            JSON.stringify(this.mergeData(this.devices.assembleData(this._cacheResourcesPath, this._formatMessage),
-                this.devices.assembleData(this._builtinResourcesPath, this._formatMessage), 'deviceId'));
-
-        this.extensionsIndexData[`${locale}`] =
-            JSON.stringify(this.mergeData(this.extensions.assembleData(this._cacheResourcesPath, this._formatMessage),
-                this.extensions.assembleData(this._builtinResourcesPath, this._formatMessage), 'extensionId'));
+        console.log(clc.green(`Assembled ${cacheDevices.length + builtinDevices.length} devices and ${cacheExtensions.length + builtinExtensions.length} extensions`)); // eslint-disable-line max-len
     }
 
     isSameServer (host, port) {
@@ -105,6 +97,9 @@ class ResourceServer extends Emitter{
             this._host = host;
         }
 
+        // Assemble all data at startup
+        this.assembleData();
+
         this._app = express();
         this._server = http.createServer(this._app);
 
@@ -120,29 +115,14 @@ class ResourceServer extends Emitter{
             res.send(SERVER_NAME);
         });
 
-        this._app.get('/:type/:locale', (req, res) => {
-            const type = req.params.type;
+        this._app.get('/devices.json', (req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.send(this.deviceData);
+        });
 
-            if (type !== 'devices' && type !== 'extensions') {
-                res.sendStatus(404);
-                return;
-            }
-
-            let locale;
-            if (req.params.locale.indexOf('.') === -1) {
-                locale = req.params.locale;
-            } else {
-                locale = req.params.locale.slice(0, req.params.locale.indexOf('.'));
-            }
-
-            // Generate data cache after first access
-            if (type === this.extensions.type) {
-                this.generateCache(locale);
-                res.send(this.extensionsIndexData[`${locale}`]);
-            } else if (type === this.devices.type) {
-                this.generateCache(locale);
-                res.send(this.deviceIndexData[`${locale}`]);
-            }
+        this._app.get('/extensions.json', (req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.send(this.extensionData);
         });
 
         this._server.listen(this._port, this._host, () => {
