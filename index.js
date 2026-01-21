@@ -1,19 +1,15 @@
 const fs = require('fs-extra');
 const Emitter = require('events');
 const path = require('path');
-const compareVersions = require('compare-versions');
 const clc = require('cli-color');
 
 const ResourceServer = require('./src/server');
-const ResourceUpdater = require('./src/updater');
 const {
-    DEFAULT_CACHE_RESOURCES_PATH,
-    DEFAULT_BUILTIN_RESOURCES_PATH,
-    DEFAULT_LOCALE
+    DEFAULT_CACHE_RESOURCES_PATH
 } = require('./src/config');
 
 class OpenblockResourceServer extends Emitter{
-    constructor (cacheResourcesPath, builtinResourcesPath, locale = DEFAULT_LOCALE) {
+    constructor (cacheResourcesPath, builtinResourcesPath) {
         super();
 
         if (cacheResourcesPath) {
@@ -22,88 +18,44 @@ class OpenblockResourceServer extends Emitter{
             this._cacheResourcesPath = path.join(DEFAULT_CACHE_RESOURCES_PATH);
         }
 
-        if (builtinResourcesPath) {
-            this._builtinResourcesPath = path.join(builtinResourcesPath);
-        } else {
-            this._builtinResourcesPath = path.join(DEFAULT_BUILTIN_RESOURCES_PATH);
-        }
+        // Build array of builtin resource paths
+        // Priority: OPENBLOCK_EXTERNAL_RESOURCES paths first, then builtinResourcesPath
+        this._builtinResourcesPaths = [];
 
-        // If the path to OPENBLOCK_EXTERNAL_RESOURCES is set in the environment variable, or there
-        // is an OpenBlockExternalResources folder in the same directory as the software installation directory,
-        // the content in this path or directory will be used first, rather than the content in the software
-        // installation path.
-        // This method is used when customizing by a third-party manufacturer, so as to avoid overwriting
-        // the content of the third - party manufacturer when updating the software.
-        // For MAC or Linux devices, it is not practical to use a path relative to the installation
-        // directory to store OpenBlockExternalResources, so we will scan the external resources path
-        // set in the environment variable first.
+        // Parse OPENBLOCK_EXTERNAL_RESOURCES environment variable as multiple paths
+        // Paths are separated by path.delimiter (';' on Windows, ':' on Linux/Mac)
         const envOpenBlockExternalResources = process.env.OPENBLOCK_EXTERNAL_RESOURCES;
         if (envOpenBlockExternalResources) {
-            console.info(`env OPENBLOCK_EXTERNAL_RESOURCES: \
-"${envOpenBlockExternalResources}"`);
-            this._builtinResourcesPath = envOpenBlockExternalResources;
-        } else {
-            const thirdPartyResourcesDir = path.join(this._builtinResourcesPath,
-                '../../OpenBlockExternalResources');
-            const thirdPartyConfigPath = path.join(thirdPartyResourcesDir, 'config.json');
-            if (fs.existsSync(thirdPartyConfigPath)) {
-                console.info('The OpenBlockExternalResources folder is detected in the parent directory');
-                this._builtinResourcesPath = thirdPartyResourcesDir;
+            console.info(`$env:OPENBLOCK_EXTERNAL_RESOURCES = "${envOpenBlockExternalResources}"`);
+            const envPaths = envOpenBlockExternalResources
+                .split(path.delimiter)
+                .map(p => p.trim())
+                .filter(p => p.length > 0);
+            this._builtinResourcesPaths.push(...envPaths);
+        }
+
+        // Add builtinResourcesPath as the last fallback
+        if (builtinResourcesPath) {
+            this._builtinResourcesPaths.push(path.join(builtinResourcesPath));
+        }
+
+        // Validate each path exists
+        for (const resourcePath of this._builtinResourcesPaths) {
+            if (!fs.existsSync(resourcePath)) {
+                console.error(clc.red(`The external resource path does not exist: ${resourcePath}`));
             }
         }
-
-        if (!fs.existsSync(this._builtinResourcesPath)) {
-            console.error(clc.red(`The external resource path does not exist: ${this._builtinResourcesPath}`));
-        }
-
-        if (fs.existsSync(path.join(this._cacheResourcesPath, 'config.json'))) {
-            this._configPath = path.join(this._cacheResourcesPath, 'config.json');
-        } else {
-            this._configPath = path.join(this._builtinResourcesPath, 'config.json');
-        }
-
-        this._locale = locale;
-
-        this._latestVersion = null;
-        this.updater = null;
-    }
-
-    checkUpdate (option) {
-        let config;
-
-        try {
-            config = JSON.parse(fs.readFileSync(this._configPath, 'utf8'));
-        } catch (e) {
-            return Promise.reject(e);
-        }
-
-        if (!this.updater) {
-            this.updater = new ResourceUpdater(
-                this._locale === 'CN' && config.updater.cn ? config.updater.cn : config.updater.default,
-                path.dirname(this._cacheResourcesPath));
-        }
-
-        return this.updater.checkUpdate(option)
-            .then(info => {
-                info.currentVersion = config.version;
-                if (compareVersions(info.latestVersion, info.currentVersion) > 0) {
-                    info.updateble = true;
-                } else {
-                    info.updateble = false;
-                }
-                this._latestVersion = info.latestVersion;
-                return info;
-            });
-    }
-
-    update (option) {
-        return this.updater.update(this._latestVersion, option);
     }
 
     listen (port = null) {
-        const server = new ResourceServer(this._cacheResourcesPath, this._builtinResourcesPath);
-        console.info(`cached external resources path: "${this._cacheResourcesPath}"`);
-        console.info(`builtin external resources path: "${this._builtinResourcesPath}"`);
+        // Combine all resource paths in priority order: cache first, then builtin paths
+        const allResourcesPaths = [this._cacheResourcesPath, ...this._builtinResourcesPaths];
+
+        const server = new ResourceServer(allResourcesPaths);
+        console.info('Resource paths (in priority order):');
+        allResourcesPaths.forEach((resourcePath, index) => {
+            console.info(`  ${index + 1}. ${resourcePath}`);
+        });
 
         server.on('error', e => {
             this.emit('error', e);

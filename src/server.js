@@ -3,6 +3,7 @@ const Emitter = require('events');
 const fetch = require('node-fetch');
 const http = require('http');
 const clc = require('cli-color');
+const _ = require('lodash');
 
 const OpenBlockDevice = require('./device');
 const OpenBlockExtension = require('./extension');
@@ -20,14 +21,12 @@ class ResourceServer extends Emitter{
 
     /**
      * Construct a OpenBlock resource server object.
-     * @param {string} cacheResourcesPath - the path of cache resources.
-     * @param {string} builtinResourcesPath - the path of builtin resources.
+     * @param {string[]} resourcesPaths - array of resource paths ordered by priority (first = highest priority).
      */
-    constructor (cacheResourcesPath, builtinResourcesPath) {
+    constructor (resourcesPaths) {
         super();
 
-        this._cacheResourcesPath = cacheResourcesPath;
-        this._builtinResourcesPath = builtinResourcesPath;
+        this._resourcesPaths = resourcesPaths;
         this._host = DEFAULT_HOST;
         this._port = DEFAULT_PORT;
 
@@ -38,32 +37,30 @@ class ResourceServer extends Emitter{
         this.extensionData = null;
     }
 
-    // If the id is the same, cached data is used first
-    mergeData (cacheData, builtinData, attributes) {
-        const resultMap = new Map();
-
-        cacheData.forEach(item => resultMap.set(item[`${attributes}`], item));
-        builtinData.forEach(item => {
-            if (!resultMap.has(item[`${attributes}`])) {
-                resultMap.set(item[`${attributes}`], item);
-            }
-        });
-        return Array.from(resultMap.values());
-    }
-
     /**
-     * Assemble all resource data at startup
+     * Assemble all resource data at startup.
+     * Iterates through all resource paths in priority order, merging results.
+     * Priority: first path > second path > third path > ...
      */
     assembleData () {
-        const cacheDevices = this.devices.assembleData(this._cacheResourcesPath);
-        const builtinDevices = this.devices.assembleData(this._builtinResourcesPath);
-        const cacheExtensions = this.extensions.assembleData(this._cacheResourcesPath);
-        const builtinExtensions = this.extensions.assembleData(this._builtinResourcesPath);
+        const allDevices = [];
+        const allExtensions = [];
 
-        this.deviceData = JSON.stringify(this.mergeData(cacheDevices, builtinDevices, 'deviceId'));
-        this.extensionData = JSON.stringify(this.mergeData(cacheExtensions, builtinExtensions, 'extensionId'));
+        for (const resourcePath of this._resourcesPaths) {
+            allDevices.push(...this.devices.assembleData(resourcePath));
+            allExtensions.push(...this.extensions.assembleData(resourcePath));
+        }
 
-        console.log(clc.green(`Assembled ${cacheDevices.length + builtinDevices.length} devices and ${cacheExtensions.length + builtinExtensions.length} extensions`)); // eslint-disable-line max-len
+        const deviceData = _.unionBy(allDevices, 'deviceId');
+        const extensionData = _.unionBy(allExtensions, 'extensionId');
+
+        this.deviceData = JSON.stringify(deviceData);
+        this.extensionData = JSON.stringify(extensionData);
+
+        console.log(clc.green(
+            `Assembled ${allDevices.length} devices and ${allExtensions.length} extensions ` +
+            `(deduplicated to ${deviceData.length} devices and ${extensionData.length} extensions)`
+        ));
     }
 
     isSameServer (host, port) {
@@ -108,8 +105,11 @@ class ResourceServer extends Emitter{
             res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
             next();
         });
-        this._app.use(express.static(`${this._cacheResourcesPath}`));
-        this._app.use(express.static(`${this._builtinResourcesPath}`));
+
+        // Register static file directories
+        for (const resourcePath of this._resourcesPaths) {
+            this._app.use(express.static(resourcePath));
+        }
 
         this._app.get('/', (req, res) => {
             res.send(SERVER_NAME);

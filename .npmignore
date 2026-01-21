@@ -10,11 +10,3 @@
 # Coverage created files
 /.nyc_output
 /coverage
-
-# Resource files
-/external-resources
-
-# build generate files
-/dist
-/translation
-/download
