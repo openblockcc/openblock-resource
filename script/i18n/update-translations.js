@@ -52,6 +52,18 @@ const LOCALE_MAP = {
     'zh-tw': 'zh_TW'
 };
 
+/**
+ * Strip scoped package name prefix (e.g., @openblock/extension-name -> extension-name)
+ * @param {string} name - Package name
+ * @returns {string} Name without scope prefix
+ */
+const stripScopedName = name => {
+    if (name && name.startsWith('@') && name.includes('/')) {
+        return name.split('/')[1];
+    }
+    return name;
+};
+
 // ============================================================================
 // Utilities
 // ============================================================================
@@ -418,7 +430,7 @@ const extractEnglishValues = (pluginDir, keys) => {
 
     // Extract interface values from name and description
     if (pkg.name && keys.interface.includes(`${resourceId}.name`)) {
-        result.interface[`${resourceId}.name`] = pkg.name;
+        result.interface[`${resourceId}.name`] = stripScopedName(pkg.name);
     }
     if (pkg.description && keys.interface.includes(`${resourceId}.description`)) {
         result.interface[`${resourceId}.description`] = pkg.description;
@@ -582,7 +594,8 @@ const updatePackageJsonL10n = (pluginDir, interfaceTranslations, keys) => {
         newL10n[field] = {};
 
         // Get English value from top-level field
-        const newEnValue = pkg[field];
+        // For 'name' field, strip scoped package prefix
+        const newEnValue = field === 'name' ? stripScopedName(pkg[field]) : pkg[field];
         const existingEnValue = existingL10n[field]?.en;
 
         for (const locale of localeList) {

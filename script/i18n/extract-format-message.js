@@ -39,6 +39,18 @@ const parseArgs = () => {
 const {dir} = parseArgs();
 const workDir = dir || './';
 
+/**
+ * Strip scoped package name prefix (e.g., @openblock/extension-name -> extension-name)
+ * @param {string} name - Package name
+ * @returns {string} Name without scope prefix
+ */
+const stripScopedName = name => {
+    if (name && name.startsWith('@') && name.includes('/')) {
+        return name.split('/')[1];
+    }
+    return name;
+};
+
 // ============================================================================
 // Utilities
 // ============================================================================
@@ -107,7 +119,7 @@ const scanPlugin = pluginDir => {
                 if (pkg.name) {
                     result.interface.push({
                         id: `${resourceId}.name`,
-                        default: pkg.name
+                        default: stripScopedName(pkg.name)
                     });
                 }
                 if (pkg.description) {
