@@ -52,18 +52,6 @@ const LOCALE_MAP = {
     'zh-tw': 'zh_TW'
 };
 
-/**
- * Strip scoped package name prefix (e.g., @openblock/extension-name -> extension-name)
- * @param {string} name - Package name
- * @returns {string} Name without scope prefix
- */
-const stripScopedName = name => {
-    if (name && name.startsWith('@') && name.includes('/')) {
-        return name.split('/')[1];
-    }
-    return name;
-};
-
 // ============================================================================
 // Utilities
 // ============================================================================
@@ -256,21 +244,26 @@ const extractPluginKeys = pluginDir => {
     }
 
     const openblock = pkg.openblock;
-    const resourceId = openblock.extensionId || openblock.deviceId;
-
-    const files = openblock.files || {};
 
     // 1. Extract interface keys from name and description
-    if (pkg.name) {
-        keys.interface.push(`${resourceId}.name`);
-    }
-    if (pkg.description) {
-        keys.interface.push(`${resourceId}.description`);
-    }
+    // Only extract if openblock.name/description contains formatMessage
+    // Skip if it's a plain string (handled by runtime directly)
 
-    // 2. Extract extension keys from source files (main.js)
-    if (files.main) {
-        const mainJsPath = files.main.replace(/^dist\//, 'src/');
+    // Extract name key - only if it has formatMessage
+    if (openblock.name && typeof openblock.name === 'object' && openblock.name.formatMessage) {
+        keys.interface.push(openblock.name.formatMessage.id);
+    }
+    // If openblock.name is a plain string, skip it (no extraction needed)
+
+    // Extract description key - only if it has formatMessage
+    if (openblock.description && typeof openblock.description === 'object' && openblock.description.formatMessage) {
+        keys.interface.push(openblock.description.formatMessage.id);
+    }
+    // If openblock.description is a plain string, skip it (no extraction needed)
+
+    // 2. Extract extension keys from source files (main.js for extensions)
+    if (openblock.main) {
+        const mainJsPath = openblock.main;
         const fullMainPath = path.join(pluginDir, mainJsPath);
         if (fs.existsSync(fullMainPath)) {
             try {
@@ -285,9 +278,31 @@ const extractPluginKeys = pluginDir => {
         }
     }
 
+    // 2b. Extract extension keys from frameworks array (for devices)
+    // Each framework has a main field pointing to a source file
+    if (openblock.frameworks && Array.isArray(openblock.frameworks)) {
+        for (const framework of openblock.frameworks) {
+            if (framework.main) {
+                const mainJsPath = framework.main;
+                const fullMainPath = path.join(pluginDir, mainJsPath);
+                if (fs.existsSync(fullMainPath)) {
+                    try {
+                        const content = fs.readFileSync(fullMainPath, 'utf8');
+                        const messages = extractFormatMessages(content);
+                        messages.forEach(msg => {
+                            keys.extensions.push(msg.id);
+                        });
+                    } catch (e) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+    }
+
     // 3. Extract block keys from msg.json
-    if (files.msg) {
-        const msgPath = path.join(pluginDir, files.msg);
+    if (openblock.msg) {
+        const msgPath = path.join(pluginDir, openblock.msg);
         if (fs.existsSync(msgPath)) {
             try {
                 const msgJson = fs.readJsonSync(msgPath);
@@ -319,6 +334,20 @@ const parseExistingTranslations = filePath => {
             blocks: {}
         };
 
+        // Try to parse new format first: export default { 'en': {...}, 'zh-cn': {...} }
+        const newFormatMatch = content.match(/export\s+default\s+(\{[\s\S]*\});?\s*$/);
+        if (newFormatMatch) {
+            // Convert single quotes to double quotes and parse
+            const jsonStr = newFormatMatch[1].replace(/'/g, '"');
+            const parsed = JSON.parse(jsonStr);
+
+            // New format puts all translations (extensions + blocks) together
+            // We store them in extensions for merging purposes
+            result.extensions = parsed;
+            return result;
+        }
+
+        // Fall back to old format parsing
         // Extract getInterfaceTranslations
         const interfaceMatch = content.match(
             /export const getInterfaceTranslations = \(\) => \(([\s\S]*?)\);/
@@ -384,8 +413,18 @@ const mergeTranslations = (newTranslations, existingTranslations, keys) => {
 
             for (const key of currentKeys) {
                 const newEnValue = newTranslations[type].en?.[key];
-                const existingEnValue = existingTranslations?.[type]?.en?.[key];
-                const existingValue = existingTranslations?.[type]?.[locale]?.[key];
+
+                // For new format, extensions and blocks are merged together in existingTranslations.extensions
+                // So we need to check both the specific type and the merged extensions
+                let existingEnValue = existingTranslations?.[type]?.en?.[key];
+                let existingValue = existingTranslations?.[type]?.[locale]?.[key];
+
+                // If not found in specific type, try to find in extensions (merged format)
+                // The new format stores all translations (extensions + blocks) in the extensions object
+                if (typeof existingEnValue === 'undefined') {
+                    existingEnValue = existingTranslations?.extensions?.en?.[key];
+                    existingValue = existingTranslations?.extensions?.[locale]?.[key];
+                }
 
                 if (locale === 'en') {
                     // For English, always use new value
@@ -425,20 +464,32 @@ const extractEnglishValues = (pluginDir, keys) => {
     }
 
     const openblock = pkg.openblock;
-    const resourceId = openblock.extensionId || openblock.deviceId;
-    const files = openblock.files || {};
 
     // Extract interface values from name and description
-    if (pkg.name && keys.interface.includes(`${resourceId}.name`)) {
-        result.interface[`${resourceId}.name`] = stripScopedName(pkg.name);
-    }
-    if (pkg.description && keys.interface.includes(`${resourceId}.description`)) {
-        result.interface[`${resourceId}.description`] = pkg.description;
-    }
+    // Only extract if openblock.name/description contains formatMessage
+    // Skip if it's a plain string (handled by runtime directly)
 
-    // Extract extension values from source files (main.js)
-    if (files.main) {
-        const mainJsPath = files.main.replace(/^dist\//, 'src/');
+    // Extract name value - only if it has formatMessage
+    if (openblock.name && typeof openblock.name === 'object' && openblock.name.formatMessage) {
+        const fm = openblock.name.formatMessage;
+        if (fm.id && fm.default && keys.interface.includes(fm.id)) {
+            result.interface[fm.id] = fm.default;
+        }
+    }
+    // If openblock.name is a plain string, skip it (no extraction needed)
+
+    // Extract description value - only if it has formatMessage
+    if (openblock.description && typeof openblock.description === 'object' && openblock.description.formatMessage) {
+        const fm = openblock.description.formatMessage;
+        if (fm.id && fm.default && keys.interface.includes(fm.id)) {
+            result.interface[fm.id] = fm.default;
+        }
+    }
+    // If openblock.description is a plain string, skip it (no extraction needed)
+
+    // Extract extension values from source files (main.js for extensions)
+    if (openblock.main) {
+        const mainJsPath = openblock.main;
         const fullMainPath = path.join(pluginDir, mainJsPath);
         if (fs.existsSync(fullMainPath)) {
             try {
@@ -455,9 +506,33 @@ const extractEnglishValues = (pluginDir, keys) => {
         }
     }
 
+    // Extract extension values from frameworks array (for devices)
+    // Each framework has a main field pointing to a source file
+    if (openblock.frameworks && Array.isArray(openblock.frameworks)) {
+        for (const framework of openblock.frameworks) {
+            if (framework.main) {
+                const mainJsPath = framework.main;
+                const fullMainPath = path.join(pluginDir, mainJsPath);
+                if (fs.existsSync(fullMainPath)) {
+                    try {
+                        const content = fs.readFileSync(fullMainPath, 'utf8');
+                        const messages = extractFormatMessages(content);
+                        messages.forEach(msg => {
+                            if (keys.extensions.includes(msg.id)) {
+                                result.extensions[msg.id] = msg.default;
+                            }
+                        });
+                    } catch (e) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+    }
+
     // Extract block values from msg.json
-    if (files.msg) {
-        const msgPath = path.join(pluginDir, files.msg);
+    if (openblock.msg) {
+        const msgPath = path.join(pluginDir, openblock.msg);
         if (fs.existsSync(msgPath)) {
             try {
                 const msgJson = fs.readJsonSync(msgPath);
@@ -561,7 +636,7 @@ const buildPluginTranslations = (pluginDir, keys, allTranslations) => {
 /**
  * Update package.json l10n field with interface translations
  * @param {string} pluginDir - Plugin directory path
- * @param {object} interfaceTranslations - Interface translations by locale
+ * @param {object} interfaceTranslations - Interface translations by locale (contains English values from source)
  * @param {object} keys - Translation keys
  */
 const updatePackageJsonL10n = (pluginDir, interfaceTranslations, keys) => {
@@ -575,48 +650,57 @@ const updatePackageJsonL10n = (pluginDir, interfaceTranslations, keys) => {
         return;
     }
 
-    const resourceId = pkg.openblock.extensionId || pkg.openblock.deviceId;
+    const openblock = pkg.openblock;
     const localeList = Object.keys(locales);
 
     // Read existing l10n
-    const existingL10n = pkg.openblock.l10n || {};
+    const existingL10n = openblock.l10n || {};
+
+    // Check if using new format (formatMessage in openblock.name/description)
+    const hasNewFormat = (openblock.name && typeof openblock.name === 'object' && openblock.name.formatMessage) ||
+                         (openblock.description && typeof openblock.description === 'object' &&
+                          openblock.description.formatMessage);
+
+    // If no formatMessage found, skip updating l10n (plain strings don't need l10n)
+    if (!hasNewFormat) {
+        return;
+    }
 
     // Build new l10n structure
+    // l10n structure is { locale: { translationId: value } }
+    // Example: { "en": { "passiveBuzzerScratch.name": "...", "passiveBuzzerScratch.description": "..." } }
     const newL10n = {};
 
-    // Process name and description
-    ['name', 'description'].forEach(field => {
-        const key = `${resourceId}.${field}`;
-        if (!keys.interface.includes(key)) {
-            return;
-        }
+    for (const locale of localeList) {
+        newL10n[locale] = {};
 
-        newL10n[field] = {};
+        // Process all interface keys for this locale
+        keys.interface.forEach(key => {
+            // Get existing value for this key and locale (user's manual translation)
+            const existingValue = existingL10n[locale]?.[key];
 
-        // Get English value from top-level field
-        // For 'name' field, strip scoped package prefix
-        const newEnValue = field === 'name' ? stripScopedName(pkg[field]) : pkg[field];
-        const existingEnValue = existingL10n[field]?.en;
+            // Get new English value from source (formatMessage.default)
+            const newEnValue = interfaceTranslations.en?.[key];
+            // Get old English value from existing l10n
+            const existingEnValue = existingL10n.en?.[key];
 
-        for (const locale of localeList) {
             if (locale === 'en') {
-                // For English, always use value from top-level field
-                newL10n[field][locale] = newEnValue;
-            } else {
-                const existingValue = existingL10n[field]?.[locale];
-
-                if (existingValue && existingEnValue === newEnValue) {
-                    // English value unchanged - keep existing translation
-                    newL10n[field][locale] = existingValue;
-                } else {
-                    // English value changed or no existing translation
-                    // Use translation from Transifex/local, or fallback to English
-                    const translatedValue = interfaceTranslations[locale]?.[key];
-                    newL10n[field][locale] = translatedValue || newEnValue;
+                // For English, always use new value from source
+                if (newEnValue) {
+                    newL10n[locale][key] = newEnValue;
                 }
+            } else if (existingValue && existingEnValue === newEnValue) {
+                // English value unchanged - keep user's manual translation
+                newL10n[locale][key] = existingValue;
+            } else if (existingValue && existingEnValue !== newEnValue) {
+                // English value changed - use English as placeholder (needs re-translation)
+                newL10n[locale][key] = newEnValue || '';
+            } else {
+                // No existing translation - use English as placeholder
+                newL10n[locale][key] = newEnValue || '';
             }
-        }
-    });
+        });
+    }
 
     // Update package.json
     pkg.openblock.l10n = newL10n;

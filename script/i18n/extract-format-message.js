@@ -39,18 +39,6 @@ const parseArgs = () => {
 const {dir} = parseArgs();
 const workDir = dir || './';
 
-/**
- * Strip scoped package name prefix (e.g., @openblock/extension-name -> extension-name)
- * @param {string} name - Package name
- * @returns {string} Name without scope prefix
- */
-const stripScopedName = name => {
-    if (name && name.startsWith('@') && name.includes('/')) {
-        return name.split('/')[1];
-    }
-    return name;
-};
-
 // ============================================================================
 // Utilities
 // ============================================================================
@@ -113,21 +101,34 @@ const scanPlugin = pluginDir => {
             const openblock = pkg.openblock;
 
             if (openblock) {
-                const resourceId = openblock.extensionId || openblock.deviceId;
-
                 // Interface translations - extract from name and description
-                if (pkg.name) {
-                    result.interface.push({
-                        id: `${resourceId}.name`,
-                        default: stripScopedName(pkg.name)
-                    });
+                // Only extract if openblock.name/description contains formatMessage
+                // Skip if it's a plain string (handled by runtime directly)
+
+                // Extract name - only if it has formatMessage
+                if (openblock.name && typeof openblock.name === 'object' && openblock.name.formatMessage) {
+                    const fm = openblock.name.formatMessage;
+                    if (fm.id && fm.default) {
+                        result.interface.push({
+                            id: fm.id,
+                            default: fm.default
+                        });
+                    }
                 }
-                if (pkg.description) {
-                    result.interface.push({
-                        id: `${resourceId}.description`,
-                        default: pkg.description
-                    });
+                // If openblock.name is a plain string, skip it (no extraction needed)
+
+                // Extract description - only if it has formatMessage
+                if (openblock.description && typeof openblock.description === 'object' &&
+                    openblock.description.formatMessage) {
+                    const fm = openblock.description.formatMessage;
+                    if (fm.id && fm.default) {
+                        result.interface.push({
+                            id: fm.id,
+                            default: fm.default
+                        });
+                    }
                 }
+                // If openblock.description is a plain string, skip it (no extraction needed)
             }
         } catch (e) {
             console.error(`Failed to parse ${packageJsonPath}:`, e.message);
@@ -138,11 +139,11 @@ const scanPlugin = pluginDir => {
     if (packageJsonPath && fs.existsSync(packageJsonPath)) {
         try {
             const pkg = fs.readJsonSync(packageJsonPath);
-            const files = pkg.openblock?.files || {};
+            const openblock = pkg.openblock;
 
-            // Extract from main
-            if (files.main) {
-                const mainJsPath = files.main.replace(/^dist\//, 'src/');
+            // Extract from main (for extensions)
+            if (openblock?.main) {
+                const mainJsPath = openblock.main;
                 const fullMainPath = path.join(pluginDir, mainJsPath);
                 if (fs.existsSync(fullMainPath)) {
                     const content = fs.readFileSync(fullMainPath, 'utf8');
@@ -150,9 +151,24 @@ const scanPlugin = pluginDir => {
                 }
             }
 
+            // Extract from frameworks array (for devices)
+            // Each framework has a main field pointing to a source file
+            if (openblock?.frameworks && Array.isArray(openblock.frameworks)) {
+                for (const framework of openblock.frameworks) {
+                    if (framework.main) {
+                        const mainJsPath = framework.main;
+                        const fullMainPath = path.join(pluginDir, mainJsPath);
+                        if (fs.existsSync(fullMainPath)) {
+                            const content = fs.readFileSync(fullMainPath, 'utf8');
+                            result.extensions.push(...extractFormatMessages(content));
+                        }
+                    }
+                }
+            }
+
             // Extract from msg
-            if (files.msg) {
-                const msgJsonPath = path.join(pluginDir, files.msg);
+            if (openblock?.msg) {
+                const msgJsonPath = path.join(pluginDir, openblock.msg);
                 if (fs.existsSync(msgJsonPath)) {
                     try {
                         const msgJson = fs.readJsonSync(msgJsonPath);

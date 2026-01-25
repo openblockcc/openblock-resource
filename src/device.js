@@ -5,7 +5,7 @@ const TYPE = 'devices';
 // Path fields configuration for devices
 const PATH_FIELDS = {
     relative: ['iconURL', 'connectionIconURL', 'connectionSmallIconURL', 'main', 'translations'],
-    absolute: ['firmware', 'arduinoData'] // Used directly by the toolchain and uploader
+    absolute: ['firmware', 'toolchain']
 };
 
 /**

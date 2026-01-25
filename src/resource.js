@@ -66,7 +66,6 @@ class OpenBlockResource {
 
         try {
             const {packageJson, openblock} = config;
-            const files = openblock.files || {};
             const basePath = path.join(this.type, path.basename(dirPath));
 
             // l10n directly from package.json openblock.l10n
@@ -78,12 +77,16 @@ class OpenBlockResource {
                 extensionId: openblock.extensionId,
                 deviceId: openblock.deviceId,
 
+                // Name and description
+                name: openblock.name,
+                description: openblock.description,
+
                 // l10n - all translations in one object
                 l10n,
 
                 // Metadata
                 version: packageJson.version,
-                author: openblock.author || packageJson.author,
+                author: packageJson.author,
 
                 // Config
                 supportDevice: openblock.supportDevice,
@@ -94,13 +97,15 @@ class OpenBlockResource {
                 helpLink: openblock.helpLink,
 
                 // Files
-                iconURL: files.icon,
-                blocks: files.blocks,
-                toolbox: files.toolbox,
-                main: files.main,
-                generator: files.generator,
-                translations: files.translations,
-                libraries: files.libraries
+                iconURL: openblock.iconURL,
+                connectionIconURL: openblock.connectionIconURL,
+                connectionSmallIconURL: openblock.connectionSmallIconURL,
+                blocks: openblock.blocks,
+                toolbox: openblock.toolbox,
+                main: openblock.main,
+                generator: openblock.generator,
+                translations: openblock.translations,
+                libraries: openblock.libraries
             };
 
             // Remove undefined fields
