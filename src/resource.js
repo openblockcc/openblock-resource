@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const log = require('./log');
 
 /**
  * Base class for OpenBlock resource loaders.
@@ -115,7 +116,7 @@ class OpenBlockResource {
 
             return this._transformPaths(content, basePath, dataPath);
         } catch (e) {
-            console.error(`Failed to load resource from ${dirPath}:`, e);
+            log.error(`Failed to load resource from ${dirPath}: ${e.message}`);
             return null;
         }
     }
@@ -130,7 +131,7 @@ class OpenBlockResource {
         if (!fs.existsSync(resourcePath)) return [];
 
         const dirs = fs.readdirSync(resourcePath, {withFileTypes: true})
-            .filter(dirent => dirent.isDirectory());
+            .filter(dirent => dirent.isDirectory() || dirent.isSymbolicLink());
 
         const results = dirs.map(dirent => this.loadResource(
             path.join(resourcePath, dirent.name),

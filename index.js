@@ -1,9 +1,9 @@
 const fs = require('fs-extra');
 const Emitter = require('events');
 const path = require('path');
-const clc = require('cli-color');
 
 const ResourceServer = require('./src/server');
+const log = require('./src/log');
 const {
     DEFAULT_CACHE_RESOURCES_PATH
 } = require('./src/config');
@@ -26,7 +26,7 @@ class OpenblockResourceServer extends Emitter{
         // Paths are separated by path.delimiter (';' on Windows, ':' on Linux/Mac)
         const envOpenBlockExternalResources = process.env.OPENBLOCK_EXTERNAL_RESOURCES;
         if (envOpenBlockExternalResources) {
-            console.info(`$env:OPENBLOCK_EXTERNAL_RESOURCES = "${envOpenBlockExternalResources}"`);
+            log.info(`$env:OPENBLOCK_EXTERNAL_RESOURCES = "${envOpenBlockExternalResources}"`);
             const envPaths = envOpenBlockExternalResources
                 .split(path.delimiter)
                 .map(p => p.trim())
@@ -42,7 +42,7 @@ class OpenblockResourceServer extends Emitter{
         // Validate each path exists
         for (const resourcePath of this._builtinResourcesPaths) {
             if (!fs.existsSync(resourcePath)) {
-                console.error(clc.red(`The external resource path does not exist: ${resourcePath}`));
+                log.error(`The external resource path does not exist: ${resourcePath}`);
             }
         }
     }
@@ -52,10 +52,7 @@ class OpenblockResourceServer extends Emitter{
         const allResourcesPaths = [this._cacheResourcesPath, ...this._builtinResourcesPaths];
 
         const server = new ResourceServer(allResourcesPaths);
-        console.info('Resource paths (in priority order):');
-        allResourcesPaths.forEach((resourcePath, index) => {
-            console.info(`  ${index + 1}. ${resourcePath}`);
-        });
+        log.list('Resource paths (in priority order):', allResourcesPaths);
 
         server.on('error', e => {
             this.emit('error', e);
